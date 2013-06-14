@@ -46,5 +46,8 @@ let nursery () =
         |> List.mapi (fun f data -> f, data |> Array.map (fun x -> features.[f].[x]) |> prepare)
         |> Map.ofList
 
+    let timer = System.Diagnostics.Stopwatch()
+    timer.Start()
     let t = build dataset (Set.ofList [0.. (data |> Array.length) - 1 ]) (Set.ofList [0..7]) 8
-    printfn "Done!"
+    timer.Stop()
+    printfn "Tree building: %i ms" timer.ElapsedMilliseconds;

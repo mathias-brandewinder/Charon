@@ -53,26 +53,27 @@ module DecisionTree =
                |> Map.map (fun l labelIndexes -> 
                       Set.intersect labelIndexes indexes))
 
-    // Entropy gain of splitting labels by feature
-    let gain (feature: Feature) (labels: Feature) =
-        let initialEntropy = entropy labels
+    // Conditional Entropy when splitting labels by feature
+    let conditionalEntropy (feature: Feature) (labels: Feature) =
         let size = total feature
         split feature labels
         |> Map.map (fun v feature -> 
                (float)(total feature) * entropy (labels |> filterBy (indexesOf feature)) / (float)size)
         |> Map.toSeq
         |> Seq.sumBy snd
-        |> (-) initialEntropy
             
     let selectFeature (dataset: Map<int,Feature>) // full dataset
                       (filter: int Set) // indexes of observations in use
                       (remaining: int Set) // indexes of features usable
                       (lbls: int) =
+
         let labels = dataset.[lbls] |> filterBy filter
+        let initialEntropy = entropy labels
+
         let best =
             remaining
             |> Seq.map (fun f -> f, dataset.[f] |> filterBy filter)
-            |> Seq.map (fun (index, feat) -> gain feat labels, (index, feat))
+            |> Seq.map (fun (index, feat) -> conditionalEntropy feat labels - initialEntropy, (index, feat))
             |> Seq.maxBy fst
         if (fst best > 0.) then Some(snd best) else None
 
