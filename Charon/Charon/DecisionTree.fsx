@@ -1,5 +1,7 @@
-﻿#load "DecisionTree.fs"
+﻿#load "Index.fs"
+#load "DecisionTree.fs"
 
+open Charon
 open Charon.DecisionTree
 open System
 open System.IO
@@ -15,14 +17,16 @@ let test (size: int) (feat: int) (outcomes: int) =
 
     let dataset = data |> List.mapi (fun i x -> i, x) |> Map.ofList
 
-    let initial = [ 0 .. size ] |> Set.ofList
+    let indexes = [ 0 .. size ]
     let features = [ 0 .. (feat - 1) ] |> Set.ofList
 
     printfn "Initialized"
 
-    let tree = build dataset initial features feat
-    
-    printfn "Done!"
+    let timer = System.Diagnostics.Stopwatch()
+    timer.Start()
+    let tree = build dataset indexes features feat
+    timer.Stop()
+    printfn "Tree building: %i ms" timer.ElapsedMilliseconds    
 
 // Test on the Nursery dataset for UC Irvine:
 // http://archive.ics.uci.edu/ml/machine-learning-databases/nursery/
@@ -41,13 +45,12 @@ let nursery () =
         |> List.mapi (fun i f -> i, f |> Seq.distinct |> Seq.mapi (fun i x -> (x, i)) |> Map.ofSeq)
         |> Map.ofList
 
+    let timer = System.Diagnostics.Stopwatch()
+    timer.Start()
     let dataset = 
         [ for var in 0 .. 8 -> data |> Array.map (fun line -> line.[var]) ]
         |> List.mapi (fun f data -> f, data |> Array.map (fun x -> features.[f].[x]) |> prepare)
         |> Map.ofList
-
-    let timer = System.Diagnostics.Stopwatch()
-    timer.Start()
-    let t = build dataset (Set.ofList [0.. (data |> Array.length) - 1 ]) (Set.ofList [0..7]) 8
+    let t = build dataset [ 0.. (data |> Array.length) - 1 ] (Set.ofList [ 0 .. 7 ]) 8
     timer.Stop()
     printfn "Tree building: %i ms" timer.ElapsedMilliseconds;

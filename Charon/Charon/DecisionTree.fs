@@ -2,9 +2,11 @@
 
 module DecisionTree =
 
+    open Charon
+
     // A feature maps the outcomes, encoded as integers,
-    // to observation indexes in the dataset.
-    type Feature = Map<int, int Set>
+    // to sorted observation indexes in the dataset.
+    type Feature = Map<int, index>
 
     // A tree is either 
     // a Leaf (a final conclusion has been reached), or
@@ -25,25 +27,25 @@ module DecisionTree =
     let private total (f: Feature) = 
         f 
         |> Map.toSeq 
-        |> Seq.sumBy (fun (x,y) -> Set.count y)
+        |> Seq.sumBy (fun (x, y) -> Index.length y)
     
     // Entropy of a feature.
     let entropy (f: Feature) =
         let size = total f
         f 
         |> Map.toSeq 
-        |> Seq.sumBy (fun (x,y) -> h (Set.count y) size)
+        |> Seq.sumBy (fun (x,y) -> h (Index.length y) size)
 
     // Apply a filter to a Feature, retaining
     // only the elements whose index are in the filter set.
-    let filterBy (filter: int Set) (feature: Feature) =
+    let filterBy (filter: int list) (feature: Feature) =
         feature
-        |> Map.map (fun value indexes -> Set.intersect indexes filter)
+        |> Map.map (fun value indexes -> Index.intersect indexes filter)
 
     // Retrieve all indexes covered by feature
     let indexesOf (feature: Feature) =
         feature 
-        |> Map.fold (fun indexes k kIndexes -> Set.union indexes kIndexes) Set.empty
+        |> Map.fold (fun indexes k kIndexes -> Index.merge indexes kIndexes) []
 
     // Split labels based on the values of a feature
     let split (feature: Feature) (labels: Feature) =
@@ -51,7 +53,7 @@ module DecisionTree =
         |> Map.map (fun v indexes ->
                labels 
                |> Map.map (fun l labelIndexes -> 
-                      Set.intersect labelIndexes indexes))
+                      Index.intersect labelIndexes indexes))
 
     // Conditional Entropy when splitting labels by feature
     let conditionalEntropy (feature: Feature) (labels: Feature) =
@@ -63,10 +65,9 @@ module DecisionTree =
         |> Seq.sumBy snd
             
     let selectFeature (dataset: Map<int,Feature>) // full dataset
-                      (filter: int Set) // indexes of observations in use
+                      (filter: index) // indexes of observations in use
                       (remaining: int Set) // indexes of features usable
                       (lbls: int) =
-
         let labels = dataset.[lbls] |> filterBy filter
         let initialEntropy = entropy labels
 
@@ -81,17 +82,17 @@ module DecisionTree =
     let private mostLikely (f: Feature) =
         f 
         |> Map.toSeq 
-        |> Seq.maxBy (fun (i, s) -> Set.count s) 
+        |> Seq.maxBy (fun (i, s) -> Index.length s) 
         |> fst
 
     // Recursively build a decision tree,
     // selecting out of the remaining features
     // which ones yields the largest entropy gain
     let rec build (dataset: Map<int,Feature>) // full dataset
-                  (filter: int Set) // indexes of observations in use
+                  (filter: index) // indexes of observations in use
                   (remaining: int Set) // indexes of features usable
                   (lbls: int) =    
-        if (remaining = Set.empty || Set.count filter < 10) then // replace by function
+        if (remaining = Set.empty || Index.length filter < 10) then // replace by function
             Leaf(dataset.[lbls] |> filterBy filter |> mostLikely)
         else
             let best = selectFeature dataset filter remaining lbls
@@ -119,24 +120,15 @@ module DecisionTree =
               let value = obs.[feature]
               decide next.[value] obs
 
-    // old version; prepare performs better.
-    let private oldPrepare (obs: int seq) =
-        obs 
-        |> Seq.mapi (fun i x -> x, i) 
-        |> Seq.groupBy fst 
-        |> Seq.map (fun (x, indexes) -> 
-               x, indexes |> Seq.map snd |> Set.ofSeq) 
-        |> Map.ofSeq
-
-    // Break a vector of observations
-    // into a Map, with each possible value
-    // mapping to a set of observation indexes
+    // prepare an array into a Feature.
     let prepare (obs: int seq) =
+        let dict = System.Collections.Generic.Dictionary<int, index>()
         obs
-        |> Seq.fold (fun (i, counts) value ->
-               let updated =
-                   if Map.containsKey value counts
-                   then Map.add value (counts.[value] |> Set.add i) counts
-                   else Map.add value ([i] |> Set.ofList) counts
-               (i + 1), updated) (0, Map.empty)
-        |> snd
+        |> Seq.fold (fun i value ->
+               if dict.ContainsKey(value)
+               then dict.[value] <- i::dict.[value]
+               else dict.Add(value, [i])
+               (i + 1)) 0
+        |> ignore
+        dict |> Seq.map (fun kv -> kv.Key, List.rev kv.Value) |> Map.ofSeq
+//        |> Map.map (fun k v -> List.rev v)

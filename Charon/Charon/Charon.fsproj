@@ -41,6 +41,7 @@
     <Reference Include="System.Numerics" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Index.fs" />
     <Compile Include="DecisionTree.fs" />
     <None Include="DecisionTree.fsx" />
   </ItemGroup>
