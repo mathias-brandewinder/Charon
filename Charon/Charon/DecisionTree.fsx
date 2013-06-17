@@ -53,4 +53,4 @@ let nursery () =
         |> Map.ofList
     let t = build dataset [ 0.. (data |> Array.length) - 1 ] (Set.ofList [ 0 .. 7 ]) 8
     timer.Stop()
-    printfn "Tree building: %i ms" timer.ElapsedMilliseconds;
+    printfn "Tree building: %i ms" timer.ElapsedMilliseconds

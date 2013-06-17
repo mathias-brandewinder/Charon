@@ -74,7 +74,7 @@ module DecisionTree =
         let best =
             remaining
             |> Seq.map (fun f -> f, dataset.[f] |> filterBy filter)
-            |> Seq.map (fun (index, feat) -> conditionalEntropy feat labels - initialEntropy, (index, feat))
+            |> Seq.map (fun (index, feat) -> initialEntropy - conditionalEntropy feat labels, (index, feat))
             |> Seq.maxBy fst
         if (fst best > 0.) then Some(snd best) else None
 
