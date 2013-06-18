@@ -24,7 +24,9 @@ let test (size: int) (feat: int) (outcomes: int) =
 
     let timer = System.Diagnostics.Stopwatch()
     timer.Start()
-    let tree = build dataset indexes features feat
+
+    let tree = build dataset indexes features (10 |> enoughObservations) feat
+
     timer.Stop()
     printfn "Tree building: %i ms" timer.ElapsedMilliseconds    
 
@@ -41,16 +43,17 @@ let nursery () =
 
     let vars = 8
     let features = 
-        [ for var in 0 .. 8 -> data |> Array.map (fun line -> line.[var]) ]
+        [ for var in 0 .. vars -> data |> Array.map (fun line -> line.[var]) ]
         |> List.mapi (fun i f -> i, f |> Seq.distinct |> Seq.mapi (fun i x -> (x, i)) |> Map.ofSeq)
         |> Map.ofList
 
     let timer = System.Diagnostics.Stopwatch()
     timer.Start()
     let dataset = 
-        [ for var in 0 .. 8 -> data |> Array.map (fun line -> line.[var]) ]
+        [ for var in 0 .. vars -> data |> Array.map (fun line -> line.[var]) ]
         |> List.mapi (fun f data -> f, data |> Array.map (fun x -> features.[f].[x]) |> prepare)
         |> Map.ofList
-    let t = build dataset [ 0.. (data |> Array.length) - 1 ] (Set.ofList [ 0 .. 7 ]) 8
+
+    let t = build dataset [ 0.. (data |> Array.length) - 1 ] (Set.ofList [ 0 .. (vars - 1) ]) any vars
     timer.Stop()
     printfn "Tree building: %i ms" timer.ElapsedMilliseconds
