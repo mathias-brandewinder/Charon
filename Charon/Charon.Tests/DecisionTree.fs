@@ -75,10 +75,23 @@ module ``DecisionTree Tests`` =
         let tree = build dataset [ 0 .. 5 ] (Set.ofList [ 1 ]) 0 0
         let x =
             match tree with
-            | Branch(feat, subTree) -> feat, subTree
+            | Branch(feat, likely, subTree) -> feat, subTree
             | Leaf(_) -> failwith "unexpected!" 
         
         fst x |> should equal 1
         let subTree = snd x
         subTree.[0] |> should equal (Leaf(1))
         subTree.[1] |> should equal (Leaf(0))
+
+    [<Test>]
+    let ``Missing value should be treated as most likely`` () =
+
+        let likely = 1
+        let tree = Branch(0, likely, Map.ofList [ (1, Leaf(42)); (2, Leaf(123)) ])
+
+        decide tree [| 1 |] |> should equal 42
+        decide tree [| 2 |] |> should equal 123
+        decide tree [| 0 |] |> should equal 42 // 0 replaced by likely
+        decide tree [| 3 |] |> should equal 42 // 3 replaced by likely
+
+

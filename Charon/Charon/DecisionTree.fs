@@ -14,7 +14,7 @@ module DecisionTree =
     // more investigation is needed).
     type Tree = 
     | Leaf of int // decision
-    | Branch of int * Map<int, Tree> // feature & sub-trees by outcome
+    | Branch of int * int * Map<int, Tree> // feature index, default choice, & sub-trees by outcome
 
     let private h (category: int) (total: int) = 
         if total = 0 then 0. // is this right? failwith "At least one observation is needed."
@@ -63,7 +63,10 @@ module DecisionTree =
                (float)(total feature) * entropy (labels |> filterBy (indexesOf feature)) / (float)size)
         |> Map.toSeq
         |> Seq.sumBy snd
-                 
+    
+    // Given a filter on indexes and remaining features,
+    // pick the feature that yields highest information gain
+    // to split the tree on.             
     let selectFeature (dataset: Map<int,Feature>) // full dataset
                       (filter: index) // indexes of observations in use
                       (remaining: int Set) // indexes of features usable
@@ -107,8 +110,8 @@ module DecisionTree =
                 let (index, feature) = best
                 let remaining = remaining |> Set.remove index
                 let splits = filterBy filter feature
-
-                Branch(index,
+                let likely = splits |> mostLikely // what to pick when missing value?
+                Branch(index, likely,
                     splits
                     |> Map.map (fun v indices ->
                            let tree = build dataset indices remaining minLeaf lbls
@@ -120,18 +123,20 @@ module DecisionTree =
     let rec decide (tree: Tree) (obs: int []) =
         match tree with
         | Leaf(outcome) -> outcome
-        | Branch(feature, next) ->
+        | Branch(feature, mostLikely, next) ->
               let value = obs.[feature]
-              decide next.[value] obs
+              if Map.containsKey value next
+              then decide next.[value] obs
+              else decide next.[mostLikely] obs
 
     // prepare an array into a Feature.
     let prepare (obs: int seq) =
         let dict = System.Collections.Generic.Dictionary<int, index>()
         obs
         |> Seq.fold (fun i value ->
-               if dict.ContainsKey(value)
-               then dict.[value] <- i::dict.[value]
-               else dict.Add(value, [i])
-               (i + 1)) 0
+                if dict.ContainsKey(value)
+                then dict.[value] <- i::dict.[value]
+                else dict.Add(value, [i])
+                (i + 1)) 0
         |> ignore
         dict |> Seq.map (fun kv -> kv.Key, List.rev kv.Value) |> Map.ofSeq
