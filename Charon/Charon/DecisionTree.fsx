@@ -19,13 +19,14 @@ let test (size: int) (feat: int) (outcomes: int) =
 
     let indexes = [ 0 .. size ]
     let features = [ 0 .. (feat - 1) ] |> Set.ofList
+    let minLeaf = 5
 
     printfn "Initialized"
 
     let timer = System.Diagnostics.Stopwatch()
     timer.Start()
 
-    let tree = build dataset indexes features (10 |> enoughObservations) feat
+    let tree = build dataset indexes features minLeaf feat
 
     timer.Stop()
     printfn "Tree building: %i ms" timer.ElapsedMilliseconds    
@@ -54,6 +55,7 @@ let nursery () =
         |> List.mapi (fun f data -> f, data |> Array.map (fun x -> features.[f].[x]) |> prepare)
         |> Map.ofList
 
-    let t = build dataset [ 0.. (data |> Array.length) - 1 ] (Set.ofList [ 0 .. (vars - 1) ]) any vars
+    let minLeaf = 5
+    let tree = build dataset [ 0.. (data |> Array.length) - 1 ] (Set.ofList [ 0 .. (vars - 1) ]) minLeaf vars
     timer.Stop()
     printfn "Tree building: %i ms" timer.ElapsedMilliseconds

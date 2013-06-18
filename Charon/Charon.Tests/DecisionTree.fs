@@ -57,7 +57,7 @@ module ``DecisionTree Tests`` =
         let labels = [| 0; 0; 0; 1; 1; 2 |] |> prepare
         let dataset = [ (0, labels) ] |> Map.ofList
 
-        let tree = build dataset [ 0 .. 5 ] Set.empty any 0
+        let tree = build dataset [ 0 .. 5 ] Set.empty 0 0
         let x =
             match tree with
             | Branch(_) -> failwith "unexpected!"
@@ -72,7 +72,7 @@ module ``DecisionTree Tests`` =
         let labels =  [| 1; 1; 1; 0; 0; 0 |] |> prepare
         let dataset = [ (0, labels); (1, feature) ] |> Map.ofList
 
-        let tree = build dataset [ 0 .. 5 ] (Set.ofList [ 1 ]) any 0
+        let tree = build dataset [ 0 .. 5 ] (Set.ofList [ 1 ]) 0 0
         let x =
             match tree with
             | Branch(feat, subTree) -> feat, subTree

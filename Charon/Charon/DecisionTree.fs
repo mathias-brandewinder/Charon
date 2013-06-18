@@ -16,18 +16,6 @@ module DecisionTree =
     | Leaf of int // decision
     | Branch of int * Map<int, Tree> // feature & sub-trees by outcome
 
-    // Filter features that are valid splits
-    type Terminator = Feature -> bool
-
-    // Pass-through terminator
-    let any _ = true
-
-    // Exclude Features with less than n observation for any outcome 
-    let enoughObservations (n: int) (feature: Feature) =
-        feature 
-        |> Map.exists (fun k v -> Index.length v < n)
-        |> not
-
     let private h (category: int) (total: int) = 
         if total = 0 then 0. // is this right? failwith "At least one observation is needed."
         elif category = 0 then 0.
@@ -79,26 +67,17 @@ module DecisionTree =
     let selectFeature (dataset: Map<int,Feature>) // full dataset
                       (filter: index) // indexes of observations in use
                       (remaining: int Set) // indexes of features usable
-                      (terminator: Terminator)
                       (lbls: int) =
         let labels = dataset.[lbls] |> filterBy filter
         let initialEntropy = entropy labels
-
-        // filter out features that don't pass termination criteria
-        let candidates = 
+        
+        let best =            
             remaining
             |> Seq.map (fun f -> f, dataset.[f] |> filterBy filter)
-            |> Seq.filter (fun (index, feature) -> terminator feature)
-        
-        if (Seq.isEmpty candidates) then None
-        else
-            // identify feature with best information gain
-            let best =
-                candidates
-                |> Seq.map (fun (index, feat) -> 
-                    initialEntropy - conditionalEntropy feat labels, (index, feat))
-                |> Seq.maxBy fst
-            if (fst best > 0.) then Some(snd best) else None
+            |> Seq.map (fun (index, feat) -> 
+                initialEntropy - conditionalEntropy feat labels, (index, feat))
+            |> Seq.maxBy fst
+        if (fst best > 0.) then Some(snd best) else None
 
     // Most likely outcome of a feature
     let private mostLikely (f: Feature) =
@@ -113,12 +92,14 @@ module DecisionTree =
     let rec build (dataset: Map<int,Feature>) // full dataset
                   (filter: index) // indexes of observations in use
                   (remaining: int Set) // indexes of features usable
-                  (terminator: Terminator) // stop search condition
+                  (minLeaf: int) // min elements in a leaf
                   (lbls: int) =    
-        if (remaining = Set.empty) then // replace by function
+        if (remaining = Set.empty) then 
+            Leaf(dataset.[lbls] |> filterBy filter |> mostLikely)
+        elif (Index.length filter < minLeaf) then
             Leaf(dataset.[lbls] |> filterBy filter |> mostLikely)
         else
-            let best = selectFeature dataset filter remaining terminator lbls
+            let best = selectFeature dataset filter remaining lbls
 
             match best with
             | None -> Leaf(dataset.[lbls] |> filterBy filter |> mostLikely)
@@ -130,7 +111,7 @@ module DecisionTree =
                 Branch(index,
                     splits
                     |> Map.map (fun v indices ->
-                           let tree = build dataset indices remaining terminator lbls
+                           let tree = build dataset indices remaining minLeaf lbls
                            tree))
 
     // Recursively walk down the tree,
