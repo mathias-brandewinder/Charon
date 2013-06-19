@@ -95,6 +95,7 @@ module DecisionTree =
     let rec build (dataset: Map<int,Feature>) // full dataset
                   (filter: index) // indexes of observations in use
                   (remaining: int Set) // indexes of features usable
+                  (featureSelector: int Set -> int Set)
                   (minLeaf: int) // min elements in a leaf
                   (lbls: int) =    
         if (remaining = Set.empty) then 
@@ -102,7 +103,8 @@ module DecisionTree =
         elif (Index.length filter < minLeaf) then
             Leaf(dataset.[lbls] |> filterBy filter |> mostLikely)
         else
-            let best = selectFeature dataset filter remaining lbls
+            let candidates = featureSelector remaining
+            let best = selectFeature dataset filter candidates lbls
 
             match best with
             | None -> Leaf(dataset.[lbls] |> filterBy filter |> mostLikely)
@@ -114,7 +116,7 @@ module DecisionTree =
                 Branch(index, likely,
                     splits
                     |> Map.map (fun v indices ->
-                           let tree = build dataset indices remaining minLeaf lbls
+                           let tree = build dataset indices remaining featureSelector minLeaf lbls
                            tree))
 
     // Recursively walk down the tree,
@@ -140,3 +142,48 @@ module DecisionTree =
                 (i + 1)) 0
         |> ignore
         dict |> Seq.map (fun kv -> kv.Key, List.rev kv.Value) |> Map.ofSeq
+
+    // work in progress: Random Forest
+
+    let any = id
+    
+    // incorrect but good enough for now
+    let pickN n (from: int Set) =
+        let array = Set.toArray from 
+        let rng = System.Random()
+        seq { for i in 1 .. n -> array.[rng.Next(0, Array.length array)] } |> Set.ofSeq
+    
+    // also incorrect but good enough
+    let bag (p: float) (from: index) =
+        let rng = System.Random()
+        [ for x in from do if rng.NextDouble() <= p then yield x ]
+
+    // grow a tree, picking a random subset of the features at each node
+    let randomTree (dataset: Map<int,Feature>) // full dataset
+                   (filter: index) // indexes of observations in use
+                   (remaining: int Set) // indexes of features usable
+                   (minLeaf: int) // min elements in a leaf
+                   (lbls: int) =    
+        let n = sqrt (Set.count remaining |> (float)) |> (int)
+        build dataset filter remaining (pickN n) minLeaf lbls
+
+    // grow a forest of random trees
+    let forest  (dataset: Map<int,Feature>) // full dataset
+                (filter: index) // indexes of observations in use
+                (remaining: int Set) // indexes of features usable
+                (minLeaf: int) // min elements in a leaf
+                (lbls: int) 
+                (bagging: float)
+                (iters: int) =    
+        let n = sqrt (Set.count remaining |> (float)) |> (int)
+        let picker = pickN n
+        let bagger = bag bagging
+        [ for i in 1 .. iters -> build dataset (filter |> bagger) remaining picker minLeaf lbls ]
+
+    // decide based on forest majority decision
+    let forestDecide (trees: Tree []) (obs: int []) =
+        trees 
+        |> Array.map (fun t -> decide t obs)
+        |> Seq.countBy id
+        |> Seq.maxBy snd
+        |> fst

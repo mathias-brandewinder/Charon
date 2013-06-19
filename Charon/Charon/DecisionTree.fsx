@@ -24,12 +24,14 @@ let test (size: int) (feat: int) (outcomes: int) =
     printfn "Initialized"
 
     let timer = System.Diagnostics.Stopwatch()
-    timer.Start()
+    
+    timer.Restart()
 
-    let tree = build dataset indexes features minLeaf feat
+    let tree = build dataset indexes features any minLeaf feat
 
     timer.Stop()
-    printfn "Tree building: %i ms" timer.ElapsedMilliseconds    
+
+    printfn "Tree building: %i ms" timer.ElapsedMilliseconds
 
 // Test on the Nursery dataset for UC Irvine:
 // http://archive.ics.uci.edu/ml/machine-learning-databases/nursery/
@@ -56,6 +58,7 @@ let nursery () =
         |> Map.ofList
 
     let minLeaf = 5
-    let tree = build dataset [ 0.. (data |> Array.length) - 1 ] (Set.ofList [ 0 .. (vars - 1) ]) minLeaf vars
+    let tree = build dataset [ 0.. (data |> Array.length) - 1 ] (Set.ofList [ 0 .. (vars - 1) ]) any minLeaf vars
     timer.Stop()
+
     printfn "Tree building: %i ms" timer.ElapsedMilliseconds
