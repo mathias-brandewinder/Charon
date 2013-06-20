@@ -5,6 +5,7 @@ open Charon
 open Charon.DecisionTree
 open System
 open System.IO
+open System.Diagnostics
 
 #time
 
@@ -24,7 +25,7 @@ let test (size: int) (feat: int) (outcomes: int) =
 
     printfn "Initialized"
 
-    let timer = System.Diagnostics.Stopwatch()
+    let timer = Stopwatch()
     
     timer.Restart()
 
@@ -46,20 +47,40 @@ let nursery () =
         |> Array.map (fun line -> line.Split(','))
 
     let vars = 8
-    let features = 
-        [ for var in 0 .. vars -> data |> Array.map (fun line -> line.[var]) ]
-        |> List.mapi (fun i f -> i, f |> Seq.distinct |> Seq.mapi (fun i x -> (x, i)) |> Map.ofSeq)
-        |> Map.ofList
-
-    let timer = System.Diagnostics.Stopwatch()
-    timer.Start()
-    let dataset = 
+    // create a mapping from each feature value to an int > 0
+    let converters =
         [| for var in 0 .. vars -> data |> Array.map (fun line -> line.[var]) |]
-        |> Array.mapi (fun f data -> data |> Array.map (fun x -> features.[f].[x]) |> prepare)
-    let trainingSet = dataset.[8], dataset.[0..7]
+        |> Array.map (fun feat -> 
+            feat 
+            |> Seq.distinct 
+            |> Seq.mapi (fun i value -> (value, i + 1))
+            |> Map.ofSeq)
+    // convert a line to a label + features
+    let transform (obs: string []) =
+        converters.[8].[obs.[8]],
+        [| for i in 0 .. 7 -> converters.[i].[obs.[i]] |]
 
+    let timer = Stopwatch()
+    timer.Restart()
+    let dataset = 
+        [| for var in 0 .. vars -> data |> Array.map (fun line -> converters.[var].[line.[var]]) |> prepare |]
+    let trainingSet = dataset.[8], dataset.[0..7]
+    timer.Stop()
+
+    printfn "Data preparation: %i ms" timer.ElapsedMilliseconds
+
+    timer.Restart()
     let minLeaf = 5
     let tree = build trainingSet [ 0.. (data |> Array.length) - 1 ] (Set.ofList [ 0 .. (vars - 1) ]) any minLeaf
     timer.Stop()
 
     printfn "Tree building: %i ms" timer.ElapsedMilliseconds
+
+    printfn "Forecast evaluation"
+    let correct = 
+        data
+        |> Array.map transform 
+        |> Array.averageBy (fun x -> 
+            let lbl, obs = x
+            if lbl = (decide tree obs) then 1. else 0.)
+    printfn "Correct: %.3f" correct
