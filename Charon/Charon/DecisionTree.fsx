@@ -13,9 +13,10 @@ let test (size: int) (feat: int) (outcomes: int) =
 
     let rng = System.Random()
 
-    let data = [ for f in 0 .. feat -> [| for i in 0 .. size -> rng.Next(0, outcomes + 1) |] |> prepare ]
+    let labels = [| for i in 0 .. size -> rng.Next(0, outcomes + 1) |] |> prepare
+    let data = [| for f in 1 .. feat -> [| for i in 0 .. size -> rng.Next(0, outcomes + 1) |] |> prepare |]
 
-    let dataset = data |> List.mapi (fun i x -> i, x) |> Map.ofList
+    let dataset = labels, data
 
     let indexes = [ 0 .. size ]
     let features = [ 0 .. (feat - 1) ] |> Set.ofList
@@ -27,7 +28,7 @@ let test (size: int) (feat: int) (outcomes: int) =
     
     timer.Restart()
 
-    let tree = build dataset indexes features any minLeaf feat
+    let tree = build dataset indexes features any minLeaf
 
     timer.Stop()
 
@@ -53,12 +54,12 @@ let nursery () =
     let timer = System.Diagnostics.Stopwatch()
     timer.Start()
     let dataset = 
-        [ for var in 0 .. vars -> data |> Array.map (fun line -> line.[var]) ]
-        |> List.mapi (fun f data -> f, data |> Array.map (fun x -> features.[f].[x]) |> prepare)
-        |> Map.ofList
+        [| for var in 0 .. vars -> data |> Array.map (fun line -> line.[var]) |]
+        |> Array.mapi (fun f data -> data |> Array.map (fun x -> features.[f].[x]) |> prepare)
+    let trainingSet = dataset.[8], dataset.[0..7]
 
     let minLeaf = 5
-    let tree = build dataset [ 0.. (data |> Array.length) - 1 ] (Set.ofList [ 0 .. (vars - 1) ]) any minLeaf vars
+    let tree = build trainingSet [ 0.. (data |> Array.length) - 1 ] (Set.ofList [ 0 .. (vars - 1) ]) any minLeaf
     timer.Stop()
 
     printfn "Tree building: %i ms" timer.ElapsedMilliseconds

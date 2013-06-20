@@ -7,6 +7,8 @@ module DecisionTree =
     // A feature maps the outcomes, encoded as integers,
     // to sorted observation indexes in the dataset.
     type Feature = Map<int, index>
+    // Training Set = Labels and Features
+    type TrainingSet = Feature * Feature []
 
     // A tree is either 
     // a Leaf (a final conclusion has been reached), or
@@ -67,16 +69,15 @@ module DecisionTree =
     // Given a filter on indexes and remaining features,
     // pick the feature that yields highest information gain
     // to split the tree on.             
-    let selectFeature (dataset: Map<int,Feature>) // full dataset
+    let selectFeature (dataset: TrainingSet) // full dataset
                       (filter: index) // indexes of observations in use
-                      (remaining: int Set) // indexes of features usable
-                      (lbls: int) =
-        let labels = dataset.[lbls] |> filterBy filter
+                      (remaining: int Set) = // indexes of features usable 
+        let labels = fst dataset |> filterBy filter
         let initialEntropy = entropy labels
         
         let best =            
             remaining
-            |> Seq.map (fun f -> f, dataset.[f] |> filterBy filter)
+            |> Seq.map (fun f -> f, (snd dataset).[f] |> filterBy filter)
             |> Seq.map (fun (index, feat) -> 
                 initialEntropy - conditionalEntropy feat labels, (index, feat))
             |> Seq.maxBy fst
@@ -92,22 +93,22 @@ module DecisionTree =
     // Recursively build a decision tree,
     // selecting out of the remaining features
     // which ones yields the largest entropy gain
-    let rec build (dataset: Map<int,Feature>) // full dataset
+    let rec build (dataset: TrainingSet) // full dataset
                   (filter: index) // indexes of observations in use
                   (remaining: int Set) // indexes of features usable
                   (featureSelector: int Set -> int Set)
-                  (minLeaf: int) // min elements in a leaf
-                  (lbls: int) =    
+                  (minLeaf: int) = // min elements in a leaf   
+                   
         if (remaining = Set.empty) then 
-            Leaf(dataset.[lbls] |> filterBy filter |> mostLikely)
+            Leaf(fst dataset |> filterBy filter |> mostLikely)
         elif (Index.length filter < minLeaf) then
-            Leaf(dataset.[lbls] |> filterBy filter |> mostLikely)
+            Leaf(fst dataset |> filterBy filter |> mostLikely)
         else
             let candidates = featureSelector remaining
-            let best = selectFeature dataset filter candidates lbls
+            let best = selectFeature dataset filter candidates
 
             match best with
-            | None -> Leaf(dataset.[lbls] |> filterBy filter |> mostLikely)
+            | None -> Leaf(fst dataset |> filterBy filter |> mostLikely)
             | Some(best) -> 
                 let (index, feature) = best
                 let remaining = remaining |> Set.remove index
@@ -116,7 +117,7 @@ module DecisionTree =
                 Branch(index, likely,
                     splits
                     |> Map.map (fun v indices ->
-                           let tree = build dataset indices remaining featureSelector minLeaf lbls
+                           let tree = build dataset indices remaining featureSelector minLeaf
                            tree))
 
     // Recursively walk down the tree,
@@ -159,26 +160,24 @@ module DecisionTree =
         [ for x in from do if rng.NextDouble() <= p then yield x ]
 
     // grow a tree, picking a random subset of the features at each node
-    let randomTree (dataset: Map<int,Feature>) // full dataset
+    let randomTree (dataset: TrainingSet) // full dataset
                    (filter: index) // indexes of observations in use
                    (remaining: int Set) // indexes of features usable
-                   (minLeaf: int) // min elements in a leaf
-                   (lbls: int) =    
+                   (minLeaf: int) = // min elements in a leaf    
         let n = sqrt (Set.count remaining |> (float)) |> (int)
-        build dataset filter remaining (pickN n) minLeaf lbls
+        build dataset filter remaining (pickN n) minLeaf
 
     // grow a forest of random trees
-    let forest  (dataset: Map<int,Feature>) // full dataset
+    let forest  (dataset: TrainingSet) // full dataset
                 (filter: index) // indexes of observations in use
                 (remaining: int Set) // indexes of features usable
                 (minLeaf: int) // min elements in a leaf
-                (lbls: int) 
                 (bagging: float)
                 (iters: int) =    
         let n = sqrt (Set.count remaining |> (float)) |> (int)
         let picker = pickN n
         let bagger = bag bagging
-        [ for i in 1 .. iters -> build dataset (filter |> bagger) remaining picker minLeaf lbls ]
+        [ for i in 1 .. iters -> build dataset (filter |> bagger) remaining picker minLeaf ]
 
     // decide based on forest majority decision
     let forestDecide (trees: Tree []) (obs: int []) =

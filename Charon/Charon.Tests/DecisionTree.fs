@@ -55,9 +55,9 @@ module ``DecisionTree Tests`` =
     let ``No features should return most likely class`` () =
 
         let labels = [| 0; 0; 0; 1; 1; 2 |] |> prepare
-        let dataset = [ (0, labels) ] |> Map.ofList
+        let dataset = labels, [| Map.empty |]
 
-        let tree = build dataset [ 0 .. 5 ] Set.empty 0 0
+        let tree = build dataset [ 0 .. 5 ] Set.empty any 0
         let x =
             match tree with
             | Branch(_) -> failwith "unexpected!"
@@ -70,15 +70,15 @@ module ``DecisionTree Tests`` =
 
         let feature = [| 0; 0; 0; 1; 1; 1 |] |> prepare
         let labels =  [| 1; 1; 1; 0; 0; 0 |] |> prepare
-        let dataset = [ (0, labels); (1, feature) ] |> Map.ofList
+        let dataset = labels, [| feature |]
 
-        let tree = build dataset [ 0 .. 5 ] (Set.ofList [ 1 ]) 0 0
+        let tree = build dataset [ 0 .. 5 ] (Set.ofList [ 0 ]) any 0
         let x =
             match tree with
             | Branch(feat, likely, subTree) -> feat, subTree
             | Leaf(_) -> failwith "unexpected!" 
         
-        fst x |> should equal 1
+        fst x |> should equal 0
         let subTree = snd x
         subTree.[0] |> should equal (Leaf(1))
         subTree.[1] |> should equal (Leaf(0))
