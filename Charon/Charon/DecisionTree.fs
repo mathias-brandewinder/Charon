@@ -180,9 +180,9 @@ module DecisionTree =
         [ for i in 1 .. iters -> build dataset (filter |> bagger) remaining picker minLeaf ]
 
     // decide based on forest majority decision
-    let forestDecide (trees: Tree []) (obs: int []) =
+    let forestDecide (trees: Tree list) (obs: int []) =
         trees 
-        |> Array.map (fun t -> decide t obs)
+        |> List.map (fun t -> decide t obs)
         |> Seq.countBy id
         |> Seq.maxBy snd
         |> fst
