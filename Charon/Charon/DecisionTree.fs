@@ -132,6 +132,16 @@ module DecisionTree =
               if Map.containsKey value next
               then decide next.[value] obs
               else decide next.[mostLikely] obs
+    
+    let inline any x = id x
+    
+    let ID3Classifier (dataset: TrainingSet) // full dataset
+                      (filter: index)
+                      (minLeaf: int) = // min elements in a leaf  
+        let fs = snd dataset |> Array.length
+        let remaining = Set.ofList [ 0 .. (fs - 1) ]
+        let tree = build dataset filter remaining any minLeaf
+        decide tree
 
     // prepare an array into a Feature.
     let prepare (obs: int seq) =
@@ -185,7 +195,6 @@ module DecisionTree =
         
     // work in progress: Random Forest
 
-    let any x = id x
     
     // incorrect but good enough for now
     let pickN n (from: int Set) =

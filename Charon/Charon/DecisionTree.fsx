@@ -75,7 +75,7 @@ let nursery () =
 
     timer.Restart()
     let minLeaf = 5
-    let tree = build trainingSet [ 0.. (data |> Array.length) - 1 ] (Set.ofList [ 0 .. 7 ]) any minLeaf
+    let classifier = ID3Classifier trainingSet [ 0.. (data |> Array.length) - 1 ] minLeaf
     timer.Stop()
 
     printfn "Tree building: %i ms" timer.ElapsedMilliseconds
@@ -86,7 +86,7 @@ let nursery () =
         |> Array.map transform 
         |> Array.averageBy (fun x -> 
             let lbl, obs = x
-            if lbl = (decide tree obs) then 1. else 0.)
+            if lbl = (classifier obs) then 1. else 0.)
     printfn "Correct: %.3f" correct
 
 let nurseryForest () =
