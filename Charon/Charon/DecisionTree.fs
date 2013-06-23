@@ -3,6 +3,7 @@
 module DecisionTree =
 
     open Charon
+    open System.Collections.Generic
 
     // A feature maps the outcomes, encoded as integers,
     // to sorted observation indexes in the dataset.
@@ -134,7 +135,7 @@ module DecisionTree =
 
     // prepare an array into a Feature.
     let prepare (obs: int seq) =
-        let dict = System.Collections.Generic.Dictionary<int, index>()
+        let dict = Dictionary<int, index>()
         obs
         |> Seq.fold (fun i value ->
                 if dict.ContainsKey(value)
@@ -144,9 +145,47 @@ module DecisionTree =
         |> ignore
         dict |> Seq.map (fun kv -> kv.Key, List.rev kv.Value) |> Map.ofSeq
 
+    let extract (feature: 'a -> string) (data: 'a seq) =
+        let map =
+            data 
+            |> Seq.map (fun item -> feature item) 
+            |> Seq.distinct
+            |> Seq.mapi (fun i value -> value, i + 1)
+            |> Map.ofSeq
+        let extractor x = 
+            let value = feature x
+            if map.ContainsKey(value) then map.[value] else 0
+        map, extractor
+
+    let converter (features: (_ * ('a -> int)) []) (labels: int) =
+        let converters = features |> Array.map snd
+        let transform obs =
+            let asArray = converters |> Array.map (fun f -> f obs)
+            asArray.[labels],
+            Array.append asArray.[..(labels-1)] asArray.[(labels+1)..]
+        transform
+
+    let private append (dict: Dictionary<int, int list>) (value:int) (index:int) =
+        if dict.ContainsKey(value)
+        then dict.[value] <- index::dict.[value]
+        else dict.Add(value, [index])
+
+    let prepareTraining (obs: 'a seq) (converters: 'a -> int * int[]) (fs: int) =
+        let labels = Dictionary<int, index>()
+        let features = [| for i in 1 .. fs -> (Dictionary<int, index>()) |]
+        
+        obs
+        |> Seq.map (fun x -> converters x)
+        |> Seq.iteri (fun i (label, feats) ->
+            append labels label i
+            features |> Array.iteri (fun j f -> append f feats.[j] i))
+
+        labels |> Seq.map (fun kv -> kv.Key, List.rev kv.Value) |> Map.ofSeq,
+        [| for feat in features -> feat |> Seq.map (fun kv -> kv.Key, List.rev kv.Value) |> Map.ofSeq |]
+        
     // work in progress: Random Forest
 
-    let any = id
+    let any x = id x
     
     // incorrect but good enough for now
     let pickN n (from: int Set) =

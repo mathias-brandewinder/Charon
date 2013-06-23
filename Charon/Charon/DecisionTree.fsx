@@ -9,6 +9,7 @@ open System.Diagnostics
 
 #time
 
+
 // Create a synthetic, random dataset and run a tree on it
 let test (size: int) (feat: int) (outcomes: int) =
 
@@ -39,39 +40,42 @@ let test (size: int) (feat: int) (outcomes: int) =
 // http://archive.ics.uci.edu/ml/machine-learning-databases/nursery/
 let nursery () =
 
+    let timer = Stopwatch()
     // set the path to the data file
     let path = @"C:\users\mathias\desktop\nursery.txt"
        
     let data = 
         File.ReadAllLines(path)
         |> Array.map (fun line -> line.Split(','))
-
-    let vars = 8
-    // create a mapping from each feature value to an int > 0
-    let converters =
-        [| for var in 0 .. vars -> data |> Array.map (fun line -> line.[var]) |]
-        |> Array.map (fun feat -> 
-            feat 
-            |> Seq.distinct 
-            |> Seq.mapi (fun i value -> (value, i + 1))
-            |> Map.ofSeq)
-    // convert a line to a label + features
-    let transform (obs: string []) =
-        converters.[8].[obs.[8]],
-        [| for i in 0 .. 7 -> converters.[i].[obs.[i]] |]
-
-    let timer = Stopwatch()
+    
     timer.Restart()
-    let dataset = 
-        [| for var in 0 .. vars -> data |> Array.map (fun line -> converters.[var].[line.[var]]) |> prepare |]
-    let trainingSet = dataset.[8], dataset.[0..7]
+
+    let features =
+        [| data |> extract (fun line -> line.[0]);
+           data |> extract (fun line -> line.[1]);
+           data |> extract (fun line -> line.[2]);
+           data |> extract (fun line -> line.[3]);
+           data |> extract (fun line -> line.[4]);
+           data |> extract (fun line -> line.[5]);
+           data |> extract (fun line -> line.[6]);
+           data |> extract (fun line -> line.[7]);
+           data |> extract (fun line -> line.[8]); |]
+            
+    timer.Stop()
+    printfn "Features analysis: %i ms" timer.ElapsedMilliseconds
+
+    timer.Restart()
+
+    let transform = converter features 8
+    let trainingSet = prepareTraining data transform 8
+
     timer.Stop()
 
     printfn "Data preparation: %i ms" timer.ElapsedMilliseconds
 
     timer.Restart()
     let minLeaf = 5
-    let tree = build trainingSet [ 0.. (data |> Array.length) - 1 ] (Set.ofList [ 0 .. (vars - 1) ]) any minLeaf
+    let tree = build trainingSet [ 0.. (data |> Array.length) - 1 ] (Set.ofList [ 0 .. 7 ]) any minLeaf
     timer.Stop()
 
     printfn "Tree building: %i ms" timer.ElapsedMilliseconds
@@ -87,6 +91,8 @@ let nursery () =
 
 let nurseryForest () =
 
+    let timer = Stopwatch()
+
     // set the path to the data file
     let path = @"C:\users\mathias\desktop\nursery.txt"
        
@@ -94,25 +100,29 @@ let nurseryForest () =
         File.ReadAllLines(path)
         |> Array.map (fun line -> line.Split(','))
 
-    let vars = 8
-    // create a mapping from each feature value to an int > 0
-    let converters =
-        [| for var in 0 .. vars -> data |> Array.map (fun line -> line.[var]) |]
-        |> Array.map (fun feat -> 
-            feat 
-            |> Seq.distinct 
-            |> Seq.mapi (fun i value -> (value, i + 1))
-            |> Map.ofSeq)
-    // convert a line to a label + features
-    let transform (obs: string []) =
-        converters.[8].[obs.[8]],
-        [| for i in 0 .. 7 -> converters.[i].[obs.[i]] |]
+    printfn "Training set size: %i" (Array.length data)
 
-    let timer = Stopwatch()
     timer.Restart()
-    let dataset = 
-        [| for var in 0 .. vars -> data |> Array.map (fun line -> converters.[var].[line.[var]]) |> prepare |]
-    let trainingSet = dataset.[8], dataset.[0..7]
+
+    let features =
+        [| data |> extract (fun line -> line.[0]);
+           data |> extract (fun line -> line.[1]);
+           data |> extract (fun line -> line.[2]);
+           data |> extract (fun line -> line.[3]);
+           data |> extract (fun line -> line.[4]);
+           data |> extract (fun line -> line.[5]);
+           data |> extract (fun line -> line.[6]);
+           data |> extract (fun line -> line.[7]);
+           data |> extract (fun line -> line.[8]); |]
+            
+    timer.Stop()
+    printfn "Features analysis: %i ms" timer.ElapsedMilliseconds
+
+    timer.Restart()
+
+    let transform = converter features 8
+    let trainingSet = prepareTraining data transform 8
+
     timer.Stop()
 
     printfn "Data preparation: %i ms" timer.ElapsedMilliseconds
@@ -122,7 +132,7 @@ let nurseryForest () =
     let bagging = 0.75
     let iters = 50
 
-    let forest = forest trainingSet [ 0.. (data |> Array.length) - 1 ] (Set.ofList [ 0 .. (vars - 1) ]) minLeaf bagging iters
+    let forest = forest trainingSet [ 0.. (data |> Array.length) - 1 ] (Set.ofList [ 0 .. 7 ]) minLeaf bagging iters
     timer.Stop()
 
     printfn "Forest building: %i ms" timer.ElapsedMilliseconds
