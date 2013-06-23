@@ -167,23 +167,24 @@ module DecisionTree =
             if map.ContainsKey(value) then map.[value] else 0
         map, extractor
 
-    let converter (features: (_ * ('a -> int)) []) (labels: int) =
+    let converter (features: (_ * ('a -> int)) []) =
         let converters = features |> Array.map snd
+        let fs = Array.length converters - 1
         let transform obs =
             let asArray = converters |> Array.map (fun f -> f obs)
-            asArray.[labels],
-            Array.append asArray.[..(labels-1)] asArray.[(labels+1)..]
-        transform
+            asArray.[0],
+            asArray.[1 ..]
+        fs, transform
 
     let private append (dict: Dictionary<int, int list>) (value:int) (index:int) =
         if dict.ContainsKey(value)
         then dict.[value] <- index::dict.[value]
         else dict.Add(value, [index])
 
-    let prepareTraining (obs: 'a seq) (converters: 'a -> int * int[]) (fs: int) =
+    let prepareTraining (obs: 'a seq) (converters: int * ('a -> int * int[])) =
+        let fs, converters = converters
         let labels = Dictionary<int, index>()
         let features = [| for i in 1 .. fs -> (Dictionary<int, index>()) |]
-        
         obs
         |> Seq.map (fun x -> converters x)
         |> Seq.iteri (fun i (label, feats) ->
@@ -194,7 +195,6 @@ module DecisionTree =
         [| for feat in features -> feat |> Seq.map (fun kv -> kv.Key, List.rev kv.Value) |> Map.ofSeq |]
         
     // work in progress: Random Forest
-
     
     // incorrect but good enough for now
     let pickN n (from: int Set) =
@@ -212,16 +212,17 @@ module DecisionTree =
                    (filter: index) // indexes of observations in use
                    (remaining: int Set) // indexes of features usable
                    (minLeaf: int) = // min elements in a leaf    
-        let n = sqrt (Set.count remaining |> (float)) |> (int)
+        let n = sqrt (Set.count remaining |> (float)) |> ceil |> (int)
         build dataset filter remaining (pickN n) minLeaf
 
     // grow a forest of random trees
-    let forest  (dataset: TrainingSet) // full dataset
-                (filter: index) // indexes of observations in use
-                (remaining: int Set) // indexes of features usable
-                (minLeaf: int) // min elements in a leaf
-                (bagging: float)
-                (iters: int) =    
+    let forest (dataset: TrainingSet) // full dataset
+               (filter: index) // indexes of observations in use
+               (minLeaf: int) // min elements in a leaf
+               (bagging: float)
+               (iters: int) =    
+        let fs = snd dataset |> Array.length
+        let remaining = Set.ofList [ 0 .. (fs - 1) ]
         let n = sqrt (Set.count remaining |> (float)) |> (int)
         let picker = pickN n
         let bagger = bag bagging

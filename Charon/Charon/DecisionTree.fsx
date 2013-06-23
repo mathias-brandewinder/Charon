@@ -9,7 +9,6 @@ open System.Diagnostics
 
 #time
 
-
 // Create a synthetic, random dataset and run a tree on it
 let test (size: int) (feat: int) (outcomes: int) =
 
@@ -51,23 +50,23 @@ let nursery () =
     timer.Restart()
 
     let features =
-        [| data |> extract (fun line -> line.[0]);
+        [| data |> extract (fun line -> line.[8]); // labels
+           data |> extract (fun line -> line.[0]);
            data |> extract (fun line -> line.[1]);
            data |> extract (fun line -> line.[2]);
            data |> extract (fun line -> line.[3]);
            data |> extract (fun line -> line.[4]);
            data |> extract (fun line -> line.[5]);
            data |> extract (fun line -> line.[6]);
-           data |> extract (fun line -> line.[7]);
-           data |> extract (fun line -> line.[8]); |]
+           data |> extract (fun line -> line.[7]); |]
             
     timer.Stop()
     printfn "Features analysis: %i ms" timer.ElapsedMilliseconds
 
     timer.Restart()
 
-    let transform = converter features 8
-    let trainingSet = prepareTraining data transform 8
+    let transform = converter features
+    let trainingSet = prepareTraining data transform
 
     timer.Stop()
 
@@ -83,7 +82,7 @@ let nursery () =
     printfn "Forecast evaluation"
     let correct = 
         data
-        |> Array.map transform 
+        |> Array.map (snd transform) 
         |> Array.averageBy (fun x -> 
             let lbl, obs = x
             if lbl = (classifier obs) then 1. else 0.)
@@ -105,23 +104,23 @@ let nurseryForest () =
     timer.Restart()
 
     let features =
-        [| data |> extract (fun line -> line.[0]);
+        [| data |> extract (fun line -> line.[8]); // labels
+           data |> extract (fun line -> line.[0]);
            data |> extract (fun line -> line.[1]);
            data |> extract (fun line -> line.[2]);
            data |> extract (fun line -> line.[3]);
            data |> extract (fun line -> line.[4]);
            data |> extract (fun line -> line.[5]);
            data |> extract (fun line -> line.[6]);
-           data |> extract (fun line -> line.[7]);
-           data |> extract (fun line -> line.[8]); |]
+           data |> extract (fun line -> line.[7]); |]
             
     timer.Stop()
     printfn "Features analysis: %i ms" timer.ElapsedMilliseconds
 
     timer.Restart()
 
-    let transform = converter features 8
-    let trainingSet = prepareTraining data transform 8
+    let transform = converter features
+    let trainingSet = prepareTraining data transform
 
     timer.Stop()
 
@@ -132,7 +131,7 @@ let nurseryForest () =
     let bagging = 0.75
     let iters = 50
 
-    let forest = forest trainingSet [ 0.. (data |> Array.length) - 1 ] (Set.ofList [ 0 .. 7 ]) minLeaf bagging iters
+    let forest = forest trainingSet [ 0.. (data |> Array.length) - 1 ] minLeaf bagging iters
     timer.Stop()
 
     printfn "Forest building: %i ms" timer.ElapsedMilliseconds
@@ -140,7 +139,7 @@ let nurseryForest () =
     printfn "Forecast evaluation"
     let correct = 
         data
-        |> Array.map transform 
+        |> Array.map (snd transform) 
         |> Array.averageBy (fun x -> 
             let lbl, obs = x
             if lbl = (forestDecide forest obs) then 1. else 0.)
