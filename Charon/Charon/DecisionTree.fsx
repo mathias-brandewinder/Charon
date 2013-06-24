@@ -9,6 +9,12 @@ open System.Diagnostics
 
 #time
 
+// Test on the Nursery dataset from UC Irvine ML Repository:
+// http://archive.ics.uci.edu/ml/machine-learning-databases/nursery/
+// Path to the data file:
+let desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop)
+let nurseryPath = desktopPath + @"\nursery.txt"
+
 // Create a synthetic, random dataset and run a tree on it
 let test (size: int) (feat: int) (outcomes: int) =
 
@@ -35,18 +41,16 @@ let test (size: int) (feat: int) (outcomes: int) =
 
     printfn "Tree building: %i ms" timer.ElapsedMilliseconds
 
-// Test on the Nursery dataset for UC Irvine:
-// http://archive.ics.uci.edu/ml/machine-learning-databases/nursery/
+// Test on the Nursery dataset (see comments on top of file)
 let nursery () =
 
     let timer = Stopwatch()
-    // set the path to the data file
-    let path = @"C:\users\mathias\desktop\nursery.txt"
        
     let data = 
-        File.ReadAllLines(path)
+        File.ReadAllLines(nurseryPath)
         |> Array.map (fun line -> line.Split(','))
-    
+        |> Array.filter (fun line -> Array.length line = 9)
+
     timer.Restart()
 
     let features =
@@ -88,16 +92,15 @@ let nursery () =
             if lbl = (classifier obs) then 1. else 0.)
     printfn "Correct: %.3f" correct
 
+// Test on the Nursery dataset (see comments on top of file)
 let nurseryForest () =
 
     let timer = Stopwatch()
 
-    // set the path to the data file
-    let path = @"C:\users\mathias\desktop\nursery.txt"
-       
     let data = 
-        File.ReadAllLines(path)
+        File.ReadAllLines(nurseryPath)
         |> Array.map (fun line -> line.Split(','))
+        |> Array.filter (fun line -> Array.length line = 9)
 
     printfn "Training set size: %i" (Array.length data)
 
