@@ -80,58 +80,6 @@ let readDataset () =
     data
 
 // Test on the Nursery dataset (see comments on top of file)
-let nursery () =
-
-    let data = readDataset ()
-
-    let timer = Stopwatch()
-
-    timer.Restart()
-
-    // define how the labels and features should be extracted
-    let labels, observations = Array.unzip data
-    let labelizer = labels |> extract id
-    let featurizers =
-        [| observations |> extract (fun x -> x.Var1);
-           observations |> extract (fun x -> x.Var2);
-           observations |> extract (fun x -> x.Var3);
-           observations |> extract (fun x -> x.Var4);
-           observations |> extract (fun x -> x.Var5);
-           observations |> extract (fun x -> x.Var6);
-           observations |> extract (fun x -> x.Var7);
-           observations |> extract (fun x -> x.Var8); |]
-            
-    timer.Stop()
-    printfn "Features analysis: %i ms" timer.ElapsedMilliseconds
-
-    timer.Restart()
-
-    // transform the training set
-    let transform = trainingConverter (snd labelizer) (featurizers |> Array.unzip |> snd)
-    let trainingSet = prepareTraining data transform
-
-    timer.Stop()
-
-    printfn "Data preparation: %i ms" timer.ElapsedMilliseconds
-
-    timer.Restart()
-    let minLeaf = 5
-    let classifier = ID3Classifier trainingSet [ 0.. (data |> Array.length) - 1 ] minLeaf
-    timer.Stop()
-
-    printfn "Tree building: %i ms" timer.ElapsedMilliseconds
-
-    printfn "Forecast evaluation"
-    let correct = 
-        data
-        |> Array.map (snd transform) 
-        |> Array.averageBy (fun x -> 
-            let lbl, obs = x
-            if lbl = (classifier obs) then 1. else 0.)
-    printfn "Correct: %.3f" correct
-
-
-// Test on the Nursery dataset (see comments on top of file)
 let nurseryForest () =
 
     let data = readDataset ()
@@ -152,7 +100,16 @@ let nurseryForest () =
            observations |> extract (fun x -> x.Var6);
            observations |> extract (fun x -> x.Var7);
            observations |> extract (fun x -> x.Var8); |]
-            
+    
+    let featurize obs = (featurizers |> Array.unzip |> snd |> Array.map (fun f -> f obs))
+        
+    let reverseLabels = 
+        fst labelizer 
+        |> Map.toSeq 
+        |> Seq.map (fun (k, v) -> (v, k)) 
+        |> Map.ofSeq
+    let predicted x = reverseLabels.[x]
+
     timer.Stop()
     printfn "Features analysis: %i ms" timer.ElapsedMilliseconds
 
@@ -166,6 +123,24 @@ let nurseryForest () =
 
     printfn "Data preparation: %i ms" timer.ElapsedMilliseconds
 
+    printfn "ID3 Decision Tree"
+
+    timer.Restart()
+    let minLeaf = 5
+    let classifier = ID3Classifier trainingSet [ 0.. (data |> Array.length) - 1 ] minLeaf
+    timer.Stop()
+
+    printfn "Tree building: %i ms" timer.ElapsedMilliseconds
+
+    printfn "Forecast evaluation"
+    let correct = 
+        data
+        |> Array.averageBy (fun (label, obs) -> 
+            if label = (classifier (featurize obs) |> predicted) then 1. else 0.)
+    printfn "Correct: %.3f" correct
+
+    printfn "Random Forest"
+
     timer.Restart()
 
     let minLeaf = 5 // min observations per leaf
@@ -178,10 +153,9 @@ let nurseryForest () =
     printfn "Forest building: %i ms" timer.ElapsedMilliseconds
 
     printfn "Forecast evaluation"
+        
     let correct = 
         data
-        |> Array.map (snd transform) 
-        |> Array.averageBy (fun x -> 
-            let lbl, obs = x
-            if lbl = (forestDecide forest obs) then 1. else 0.)
+        |> Array.averageBy (fun (label, obs) -> 
+            if label = (forestDecide forest obs featurize predicted) then 1. else 0.)
     printfn "Correct: %.3f" correct
