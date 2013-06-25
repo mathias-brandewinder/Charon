@@ -92,6 +92,16 @@ let nursery () =
             if lbl = (classifier obs) then 1. else 0.)
     printfn "Correct: %.3f" correct
 
+type observation = {    
+    Var1: string;
+    Var2: string;
+    Var3: string;
+    Var4: string;
+    Var5: string;
+    Var6: string;
+    Var7: string;
+    Var8: string; }
+
 // Test on the Nursery dataset (see comments on top of file)
 let nurseryForest () =
 
@@ -101,21 +111,32 @@ let nurseryForest () =
         File.ReadAllLines(nurseryPath)
         |> Array.map (fun line -> line.Split(','))
         |> Array.filter (fun line -> Array.length line = 9)
+        |> Array.map (fun line ->
+            line.[8],
+            { Var1 = line.[0];
+              Var2 = line.[1];
+              Var3 = line.[2];
+              Var4 = line.[3];
+              Var5 = line.[4];
+              Var6 = line.[5];
+              Var7 = line.[6];
+              Var8 = line.[7]; })
 
     printfn "Training set size: %i" (Array.length data)
 
     timer.Restart()
 
+    let labels, observations = Array.unzip data
+    let labels = labels |> extract id
     let features =
-        [| data |> extract (fun line -> line.[8]); // labels
-           data |> extract (fun line -> line.[0]);
-           data |> extract (fun line -> line.[1]);
-           data |> extract (fun line -> line.[2]);
-           data |> extract (fun line -> line.[3]);
-           data |> extract (fun line -> line.[4]);
-           data |> extract (fun line -> line.[5]);
-           data |> extract (fun line -> line.[6]);
-           data |> extract (fun line -> line.[7]); |]
+        [| observations |> extract (fun x -> x.Var1);
+           observations |> extract (fun x -> x.Var2);
+           observations |> extract (fun x -> x.Var3);
+           observations |> extract (fun x -> x.Var4);
+           observations |> extract (fun x -> x.Var5);
+           observations |> extract (fun x -> x.Var6);
+           observations |> extract (fun x -> x.Var7);
+           observations |> extract (fun x -> x.Var8); |]
             
     timer.Stop()
     printfn "Features analysis: %i ms" timer.ElapsedMilliseconds
