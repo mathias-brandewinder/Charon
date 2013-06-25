@@ -9,12 +9,6 @@ open System.Diagnostics
 
 #time
 
-// Test on the Nursery dataset from UC Irvine ML Repository:
-// http://archive.ics.uci.edu/ml/machine-learning-databases/nursery/
-// Path to the data file:
-let desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop)
-let nurseryPath = desktopPath + @"\nursery.txt"
-
 // Create a synthetic, random dataset and run a tree on it
 let test (size: int) (feat: int) (outcomes: int) =
 
@@ -41,35 +35,79 @@ let test (size: int) (feat: int) (outcomes: int) =
 
     printfn "Tree building: %i ms" timer.ElapsedMilliseconds
 
-// Test on the Nursery dataset (see comments on top of file)
-let nursery () =
+// Test on the Nursery dataset from UC Irvine ML Repository:
+// http://archive.ics.uci.edu/ml/machine-learning-databases/nursery/
+
+// representation of an observation;
+// the 8 available features are simply
+// retrieved as a string, which is treated
+// as a categorical.
+type observation = {    
+    Var1: string;
+    Var2: string;
+    Var3: string;
+    Var4: string;
+    Var5: string;
+    Var6: string;
+    Var7: string;
+    Var8: string; }
+
+let readDataset () =
+    // Path to the data file:
+    let desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop)
+    let nurseryPath = desktopPath + @"\nursery.txt"
 
     let timer = Stopwatch()
-       
+
     let data = 
         File.ReadAllLines(nurseryPath)
         |> Array.map (fun line -> line.Split(','))
         |> Array.filter (fun line -> Array.length line = 9)
+        |> Array.map (fun line ->
+            line.[8], // the label
+            { Var1 = line.[0];
+              Var2 = line.[1];
+              Var3 = line.[2];
+              Var4 = line.[3];
+              Var5 = line.[4];
+              Var6 = line.[5];
+              Var7 = line.[6];
+              Var8 = line.[7]; })
+
+    timer.Stop()
+    printfn "Data set read: %i ms" timer.ElapsedMilliseconds
+    printfn "Training set size: %i" (Array.length data)
+    data
+
+// Test on the Nursery dataset (see comments on top of file)
+let nursery () =
+
+    let data = readDataset ()
+
+    let timer = Stopwatch()
 
     timer.Restart()
 
-    let features =
-        [| data |> extract (fun line -> line.[8]); // labels
-           data |> extract (fun line -> line.[0]);
-           data |> extract (fun line -> line.[1]);
-           data |> extract (fun line -> line.[2]);
-           data |> extract (fun line -> line.[3]);
-           data |> extract (fun line -> line.[4]);
-           data |> extract (fun line -> line.[5]);
-           data |> extract (fun line -> line.[6]);
-           data |> extract (fun line -> line.[7]); |]
+    // define how the labels and features should be extracted
+    let labels, observations = Array.unzip data
+    let labelizer = labels |> extract id
+    let featurizers =
+        [| observations |> extract (fun x -> x.Var1);
+           observations |> extract (fun x -> x.Var2);
+           observations |> extract (fun x -> x.Var3);
+           observations |> extract (fun x -> x.Var4);
+           observations |> extract (fun x -> x.Var5);
+           observations |> extract (fun x -> x.Var6);
+           observations |> extract (fun x -> x.Var7);
+           observations |> extract (fun x -> x.Var8); |]
             
     timer.Stop()
     printfn "Features analysis: %i ms" timer.ElapsedMilliseconds
 
     timer.Restart()
 
-    let transform = converter features
+    // transform the training set
+    let transform = trainingConverter (snd labelizer) (featurizers |> Array.unzip |> snd)
     let trainingSet = prepareTraining data transform
 
     timer.Stop()
@@ -92,43 +130,20 @@ let nursery () =
             if lbl = (classifier obs) then 1. else 0.)
     printfn "Correct: %.3f" correct
 
-type observation = {    
-    Var1: string;
-    Var2: string;
-    Var3: string;
-    Var4: string;
-    Var5: string;
-    Var6: string;
-    Var7: string;
-    Var8: string; }
 
 // Test on the Nursery dataset (see comments on top of file)
 let nurseryForest () =
 
+    let data = readDataset ()
+
     let timer = Stopwatch()
-
-    let data = 
-        File.ReadAllLines(nurseryPath)
-        |> Array.map (fun line -> line.Split(','))
-        |> Array.filter (fun line -> Array.length line = 9)
-        |> Array.map (fun line ->
-            line.[8],
-            { Var1 = line.[0];
-              Var2 = line.[1];
-              Var3 = line.[2];
-              Var4 = line.[3];
-              Var5 = line.[4];
-              Var6 = line.[5];
-              Var7 = line.[6];
-              Var8 = line.[7]; })
-
-    printfn "Training set size: %i" (Array.length data)
 
     timer.Restart()
 
+    // define how the labels and features should be extracted
     let labels, observations = Array.unzip data
-    let labels = labels |> extract id
-    let features =
+    let labelizer = labels |> extract id
+    let featurizers =
         [| observations |> extract (fun x -> x.Var1);
            observations |> extract (fun x -> x.Var2);
            observations |> extract (fun x -> x.Var3);
@@ -143,7 +158,8 @@ let nurseryForest () =
 
     timer.Restart()
 
-    let transform = converter features
+    // transform the training set
+    let transform = trainingConverter (snd labelizer) (featurizers |> Array.unzip |> snd)
     let trainingSet = prepareTraining data transform
 
     timer.Stop()
@@ -151,9 +167,10 @@ let nurseryForest () =
     printfn "Data preparation: %i ms" timer.ElapsedMilliseconds
 
     timer.Restart()
-    let minLeaf = 5
-    let bagging = 0.75
-    let iters = 50
+
+    let minLeaf = 5 // min observations per leaf
+    let bagging = 0.75 // proportion of sample used for estimation
+    let iters = 50 // number of trees to grow
 
     let forest = forest trainingSet [ 0.. (data |> Array.length) - 1 ] minLeaf bagging iters
     timer.Stop()

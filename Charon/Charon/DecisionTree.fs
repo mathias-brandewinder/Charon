@@ -167,14 +167,12 @@ module DecisionTree =
             if map.ContainsKey(value) then map.[value] else 0
         map, extractor
 
-    let converter (features: (_ * ('a -> int)) []) =
-        let converters = features |> Array.map snd
-        let fs = Array.length converters - 1
-        let transform obs =
-            let asArray = converters |> Array.map (fun f -> f obs)
-            asArray.[0],
-            asArray.[1 ..]
-        fs, transform
+    let trainingConverter (labelizer: 'a -> int) (featurizers: ('b -> int) []) =
+        let features = Array.length featurizers
+        let extractExample (l, ex) =
+            labelizer l,
+            featurizers |> Array.map (fun f -> f ex)
+        features, extractExample
 
     let private append (dict: Dictionary<int, int list>) (value:int) (index:int) =
         if dict.ContainsKey(value)
