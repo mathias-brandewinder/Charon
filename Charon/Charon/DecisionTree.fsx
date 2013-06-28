@@ -80,16 +80,12 @@ let readDataset () =
     data
 
 // Test on the Nursery dataset (see comments on top of file)
-let nurseryForest () =
+let nursery () =
 
     let data = readDataset ()
 
-    let timer = Stopwatch()
-
-    timer.Restart()
-
-    // define how the labels and features should be extracted
-    let fs = 
+    // define how the features should be extracted
+    let features = 
         [| (fun x -> x.Var1);
            (fun x -> x.Var2);
            (fun x -> x.Var3);
@@ -100,7 +96,7 @@ let nurseryForest () =
            (fun x -> x.Var8); |]
 
     let minLeaf = 5
-    let id3 = createID3Classifier data fs minLeaf
+    let id3 = createID3Classifier data features minLeaf
 
     printfn "Forecast evaluation"
     let correct = 
@@ -113,7 +109,7 @@ let nurseryForest () =
     let bagging = 0.75 // proportion of sample used for estimation
     let iters = 50 // number of trees to grow
 
-    let forest = createForestClassifier data fs minLeaf bagging iters
+    let forest = createForestClassifier data features minLeaf bagging iters
             
     let correct = 
         data

@@ -272,7 +272,9 @@ module DecisionTree =
                                (iters: int) =
 
         let labels, observations = Array.unzip examples
+
         let labelizer = labels |> extract id
+
         let featurizers =
             fs |> Array.map (fun f -> observations |> extract f)
     
@@ -288,7 +290,6 @@ module DecisionTree =
         let transform = trainingConverter (snd labelizer) (featurizers |> Array.unzip |> snd)
         let trainingSet = prepareTraining examples transform
 
-        let classifier = ID3Classifier trainingSet [ 0.. (examples |> Array.length) - 1 ] minLeaf
         let forest = forest trainingSet [ 0.. (examples |> Array.length) - 1 ] minLeaf bagging iters
         
         let classifier obs = (forestDecide forest obs featurize predicted)
