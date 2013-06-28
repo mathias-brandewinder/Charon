@@ -191,7 +191,34 @@ module DecisionTree =
 
         labels |> Seq.map (fun kv -> kv.Key, List.rev kv.Value) |> Map.ofSeq,
         [| for feat in features -> feat |> Seq.map (fun kv -> kv.Key, List.rev kv.Value) |> Map.ofSeq |]
+
+    let createID3Classifier (examples: (string * 'a) []) 
+                            (fs: ('a -> string)[]) 
+                            (minLeaf: int) =
+
+        let labels, observations = Array.unzip examples
+        let labelizer = labels |> extract id
+        let featurizers =
+            fs |> Array.map (fun f -> observations |> extract f)
+    
+        let featurize obs = (featurizers |> Array.unzip |> snd |> Array.map (fun f -> f obs))
         
+        let reverseLabels = 
+            fst labelizer 
+            |> Map.toSeq 
+            |> Seq.map (fun (k, v) -> (v, k)) 
+            |> Map.ofSeq
+        let predicted x = reverseLabels.[x]
+
+        // transform the training set
+        let transform = trainingConverter (snd labelizer) (featurizers |> Array.unzip |> snd)
+        let trainingSet = prepareTraining examples transform
+
+        let classifier = ID3Classifier trainingSet [ 0.. (examples |> Array.length) - 1 ] minLeaf
+
+        let f obs = (classifier (featurize obs) |> predicted)
+        f        
+
     // work in progress: Random Forest
     
     // incorrect but good enough for now
@@ -236,3 +263,33 @@ module DecisionTree =
 
     let forestDecide (trees: Tree list) (obs: 'a) (f: 'a -> int []) (l: int -> string) =
         forestDecision trees (f obs) |> l
+
+    // there is obvious duplication here with ID3, need to clean up
+    let createForestClassifier (examples: (string * 'a) []) 
+                               (fs: ('a -> string)[]) 
+                               (minLeaf: int) 
+                               (bagging: float)
+                               (iters: int) =
+
+        let labels, observations = Array.unzip examples
+        let labelizer = labels |> extract id
+        let featurizers =
+            fs |> Array.map (fun f -> observations |> extract f)
+    
+        let featurize obs = (featurizers |> Array.unzip |> snd |> Array.map (fun f -> f obs))
+        
+        let reverseLabels = 
+            fst labelizer 
+            |> Map.toSeq 
+            |> Seq.map (fun (k, v) -> (v, k)) 
+            |> Map.ofSeq
+        let predicted x = reverseLabels.[x]
+
+        let transform = trainingConverter (snd labelizer) (featurizers |> Array.unzip |> snd)
+        let trainingSet = prepareTraining examples transform
+
+        let classifier = ID3Classifier trainingSet [ 0.. (examples |> Array.length) - 1 ] minLeaf
+        let forest = forest trainingSet [ 0.. (examples |> Array.length) - 1 ] minLeaf bagging iters
+        
+        let classifier obs = (forestDecide forest obs featurize predicted)
+        classifier      

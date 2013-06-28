@@ -89,73 +89,34 @@ let nurseryForest () =
     timer.Restart()
 
     // define how the labels and features should be extracted
-    let labels, observations = Array.unzip data
-    let labelizer = labels |> extract id
-    let featurizers =
-        [| observations |> extract (fun x -> x.Var1);
-           observations |> extract (fun x -> x.Var2);
-           observations |> extract (fun x -> x.Var3);
-           observations |> extract (fun x -> x.Var4);
-           observations |> extract (fun x -> x.Var5);
-           observations |> extract (fun x -> x.Var6);
-           observations |> extract (fun x -> x.Var7);
-           observations |> extract (fun x -> x.Var8); |]
-    
-    let featurize obs = (featurizers |> Array.unzip |> snd |> Array.map (fun f -> f obs))
-        
-    let reverseLabels = 
-        fst labelizer 
-        |> Map.toSeq 
-        |> Seq.map (fun (k, v) -> (v, k)) 
-        |> Map.ofSeq
-    let predicted x = reverseLabels.[x]
+    let fs = 
+        [| (fun x -> x.Var1);
+           (fun x -> x.Var2);
+           (fun x -> x.Var3);
+           (fun x -> x.Var4);
+           (fun x -> x.Var5);
+           (fun x -> x.Var6);
+           (fun x -> x.Var7);
+           (fun x -> x.Var8); |]
 
-    timer.Stop()
-    printfn "Features analysis: %i ms" timer.ElapsedMilliseconds
-
-    timer.Restart()
-
-    // transform the training set
-    let transform = trainingConverter (snd labelizer) (featurizers |> Array.unzip |> snd)
-    let trainingSet = prepareTraining data transform
-
-    timer.Stop()
-
-    printfn "Data preparation: %i ms" timer.ElapsedMilliseconds
-
-    printfn "ID3 Decision Tree"
-
-    timer.Restart()
     let minLeaf = 5
-    let classifier = ID3Classifier trainingSet [ 0.. (data |> Array.length) - 1 ] minLeaf
-    timer.Stop()
-
-    printfn "Tree building: %i ms" timer.ElapsedMilliseconds
+    let id3 = createID3Classifier data fs minLeaf
 
     printfn "Forecast evaluation"
     let correct = 
         data
         |> Array.averageBy (fun (label, obs) -> 
-            if label = (classifier (featurize obs) |> predicted) then 1. else 0.)
+            if label = id3 obs then 1. else 0.)
     printfn "Correct: %.3f" correct
-
-    printfn "Random Forest"
-
-    timer.Restart()
 
     let minLeaf = 5 // min observations per leaf
     let bagging = 0.75 // proportion of sample used for estimation
     let iters = 50 // number of trees to grow
 
-    let forest = forest trainingSet [ 0.. (data |> Array.length) - 1 ] minLeaf bagging iters
-    timer.Stop()
-
-    printfn "Forest building: %i ms" timer.ElapsedMilliseconds
-
-    printfn "Forecast evaluation"
-        
+    let forest = createForestClassifier data fs minLeaf bagging iters
+            
     let correct = 
         data
         |> Array.averageBy (fun (label, obs) -> 
-            if label = (forestDecide forest obs featurize predicted) then 1. else 0.)
+            if label = forest obs then 1. else 0.)
     printfn "Correct: %.3f" correct
