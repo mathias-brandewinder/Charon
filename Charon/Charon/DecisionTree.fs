@@ -3,6 +3,7 @@
 module DecisionTree =
 
     open Charon
+    open System
     open System.Collections.Generic
 
     // A feature maps the outcomes, encoded as integers,
@@ -222,46 +223,52 @@ module DecisionTree =
     // work in progress: Random Forest
     
     // incorrect but good enough for now
-    let pickN n (from: int Set) =
+    let pickN n (rng: Random) (from: int Set) =
         let array = Set.toArray from 
-        let rng = System.Random()
         seq { for i in 1 .. n -> array.[rng.Next(0, Array.length array)] } |> Set.ofSeq
     
-    // also incorrect but good enough
-    let bag (p: float) (from: index) =
-        let rng = System.Random()
-        [ for x in from do if rng.NextDouble() <= p then yield x ]
+    // pick a proportion p from original sample, with replacement
+    let bag (p: float) (rng: Random) (from: index) =
+        let size = Index.length from
+        let bagSize = ((float)size * p) |> (int)
+        [ for i in 1 .. bagSize -> rng.Next(0, size) ] |> List.sort
 
     // grow a tree, picking a random subset of the features at each node
-    let randomTree (dataset: TrainingSet) // full dataset
-                   (filter: index) // indexes of observations in use
-                   (remaining: int Set) // indexes of features usable
-                   (minLeaf: int) = // min elements in a leaf    
+    let private randomTree (dataset: TrainingSet) // full dataset
+                           (filter: index) // indexes of observations in use
+                           (remaining: int Set) // indexes of features usable
+                           (minLeaf: int) 
+                           (rng: Random) = // min elements in a leaf    
         let n = sqrt (Set.count remaining |> (float)) |> ceil |> (int)
-        build dataset filter remaining (pickN n) minLeaf
+        build dataset filter remaining (pickN n rng) minLeaf
 
     // grow a forest of random trees
     let forest (dataset: TrainingSet) // full dataset
                (filter: index) // indexes of observations in use
                (minLeaf: int) // min elements in a leaf
                (bagging: float)
-               (iters: int) =    
+               (iters: int) 
+               (rng: Random) =    
         let fs = snd dataset |> Array.length
         let remaining = Set.ofList [ 0 .. (fs - 1) ]
         let n = sqrt (Set.count remaining |> (float)) |> (int)
-        let picker = pickN n
-        let bagger = bag bagging
-        [ for i in 1 .. iters -> build dataset (filter |> bagger) remaining picker minLeaf ]
+
+        [| for i in 1 .. iters -> 
+            let rng = Random(rng.Next())
+            let picker = pickN n rng
+            let bagger = bag bagging rng
+            (picker, bagger) |] 
+        |> Array.Parallel.map (fun (picker, bagger) -> build dataset (filter |> bagger) remaining picker minLeaf)
 
     // decide based on forest majority decision
-    let private forestDecision (trees: Tree list) (obs: int []) =
+    let private forestDecision (trees: Tree []) (obs: int []) =
         trees 
-        |> List.map (fun t -> decide t obs)
+        |> Array.map (fun t -> decide t obs)
         |> Seq.countBy id
         |> Seq.maxBy snd
         |> fst
 
-    let forestDecide (trees: Tree list) (obs: 'a) (f: 'a -> int []) (l: int -> string) =
+    let forestDecide (trees: Tree []) (obs: 'a) (f: 'a -> int []) (l: int -> string) =
         forestDecision trees (f obs) |> l
 
     // there is obvious duplication here with ID3, need to clean up
@@ -269,7 +276,8 @@ module DecisionTree =
                                (fs: ('a -> string)[]) 
                                (minLeaf: int) 
                                (bagging: float)
-                               (iters: int) =
+                               (iters: int) 
+                               (rng: Random) =
 
         let labels, observations = Array.unzip examples
 
@@ -290,7 +298,7 @@ module DecisionTree =
         let transform = trainingConverter (snd labelizer) (featurizers |> Array.unzip |> snd)
         let trainingSet = prepareTraining examples transform
 
-        let forest = forest trainingSet [ 0.. (examples |> Array.length) - 1 ] minLeaf bagging iters
+        let forest = forest trainingSet [ 0.. (examples |> Array.length) - 1 ] minLeaf bagging iters rng
         
         let classifier obs = (forestDecide forest obs featurize predicted)
         classifier      

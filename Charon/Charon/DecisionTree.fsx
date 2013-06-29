@@ -103,16 +103,16 @@ let nursery () =
         data
         |> Array.averageBy (fun (label, obs) -> 
             if label = id3 obs then 1. else 0.)
-    printfn "Correct: %.3f" correct
+    printfn "Correct: %.4f" correct
 
     let minLeaf = 5 // min observations per leaf
     let bagging = 0.75 // proportion of sample used for estimation
     let iters = 50 // number of trees to grow
-
-    let forest = createForestClassifier data features minLeaf bagging iters
+    let rng = Random(42)
+    let forest = createForestClassifier data features minLeaf bagging iters rng
             
     let correct = 
         data
         |> Array.averageBy (fun (label, obs) -> 
             if label = forest obs then 1. else 0.)
-    printfn "Correct: %.3f" correct
+    printfn "Correct: %.4f" correct
