@@ -144,7 +144,7 @@ module DecisionTree =
         let tree = build dataset filter remaining any minLeaf
         decide tree
 
-    // prepare an array into a Feature.
+    // prepare an array of observed values into a Feature.
     let prepare (obs: int seq) =
         let dict = Dictionary<int, index>()
         obs
@@ -156,6 +156,10 @@ module DecisionTree =
         |> ignore
         dict |> Seq.map (fun kv -> kv.Key, List.rev kv.Value) |> Map.ofSeq
 
+    // From a sequence of observations, for a feature,
+    // construct a Map of existing values to integers (indexes),
+    // an extractor function that converts an observation
+    // to its mapped integer index.
     let extract (feature: 'a -> string) (data: 'a seq) =
         let map =
             data 
@@ -168,20 +172,40 @@ module DecisionTree =
             if map.ContainsKey(value) then map.[value] else 0
         map, extractor
 
-    let trainingConverter (labelizer: 'a -> int) (featurizers: ('b -> int) []) =
-        let features = Array.length featurizers
-        let extractExample (l, ex) =
-            labelizer l,
-            featurizers |> Array.map (fun f -> f ex)
-        features, extractExample
-
     let private append (dict: Dictionary<int, int list>) (value:int) (index:int) =
         if dict.ContainsKey(value)
         then dict.[value] <- index::dict.[value]
         else dict.Add(value, [index])
 
-    let prepareTraining (obs: 'a seq) (converters: int * ('a -> int * int[])) =
-        let fs, converters = converters
+    let private prepareLabels (labels: string []) =
+        let labelsMap, labelizer = labels |> extract id
+        let reverseLabels = 
+            labelsMap 
+            |> Map.toSeq 
+            |> Seq.map (fun (k, v) -> (v, k)) 
+            |> Map.ofSeq
+        let predictor x = reverseLabels.[x]
+        // currently not returning the map,
+        // but might do so later for diagnosis
+        labelizer, predictor
+
+    let private prepareFeaturizer (observations: 'a seq) (fs: ('a -> string) [])=
+        let featuresMap, featurizers =
+            fs 
+            |> Array.map (fun f -> observations |> extract f)
+            |> Array.unzip
+        // currently not returning the map,
+        // but might do so later for diagnosis
+        let featurizer obs = featurizers |> Array.map (fun f -> f obs)
+        featurizer
+
+    // Create a function to extract labels and features
+    // from a sequence of training examples (with a label and features)
+    let private prepareTraining (obs: ('a * 'b) seq) (fs: int) (labelizer: 'a -> int) (featurizers: ('b -> int [])) =
+        let converters (l, ex) =
+            labelizer l,
+            featurizers ex
+        
         let labels = Dictionary<int, index>()
         let features = [| for i in 1 .. fs -> (Dictionary<int, index>()) |]
         obs
@@ -193,36 +217,28 @@ module DecisionTree =
         labels |> Seq.map (fun kv -> kv.Key, List.rev kv.Value) |> Map.ofSeq,
         [| for feat in features -> feat |> Seq.map (fun kv -> kv.Key, List.rev kv.Value) |> Map.ofSeq |]
 
+    // Create a full ID3 Classification Tree
     let createID3Classifier (examples: (string * 'a) []) 
                             (fs: ('a -> string)[]) 
                             (minLeaf: int) =
-
+        // Unwrap labels and observations
         let labels, observations = Array.unzip examples
-        let labelizer = labels |> extract id
-        let featurizers =
-            fs |> Array.map (fun f -> observations |> extract f)
-    
-        let featurize obs = (featurizers |> Array.unzip |> snd |> Array.map (fun f -> f obs))
+        // Convert label to integer, and integer to label
+        let labelizer, predicted = prepareLabels labels
+        // Convert observation to integer array
+        let featurizer = prepareFeaturizer observations fs
         
-        let reverseLabels = 
-            fst labelizer 
-            |> Map.toSeq 
-            |> Seq.map (fun (k, v) -> (v, k)) 
-            |> Map.ofSeq
-        let predicted x = reverseLabels.[x]
-
-        // transform the training set
-        let transform = trainingConverter (snd labelizer) (featurizers |> Array.unzip |> snd)
-        let trainingSet = prepareTraining examples transform
+        let trainingSet = prepareTraining examples (Array.length fs) labelizer featurizer
 
         let classifier = ID3Classifier trainingSet [ 0.. (examples |> Array.length) - 1 ] minLeaf
 
-        let f obs = (classifier (featurize obs) |> predicted)
+        let f obs = (classifier (featurizer obs)) |> predicted
         f        
 
     // work in progress: Random Forest
     
-    // incorrect but good enough for now
+    // Pick n distinct random indexes at most from a set;
+    // incorrect but good enough for now.
     let pickN n (rng: Random) (from: int Set) =
         let array = Set.toArray from 
         seq { for i in 1 .. n -> array.[rng.Next(0, Array.length array)] } |> Set.ofSeq
@@ -268,7 +284,7 @@ module DecisionTree =
         |> Seq.maxBy snd
         |> fst
 
-    let forestDecide (trees: Tree []) (obs: 'a) (f: 'a -> int []) (l: int -> string) =
+    let private forestDecide (trees: Tree []) (obs: 'a) (f: 'a -> int []) (l: int -> string) =
         forestDecision trees (f obs) |> l
 
     // there is obvious duplication here with ID3, need to clean up
@@ -278,27 +294,16 @@ module DecisionTree =
                                (bagging: float)
                                (iters: int) 
                                (rng: Random) =
-
+        // Unwrap labels and observations
         let labels, observations = Array.unzip examples
-
-        let labelizer = labels |> extract id
-
-        let featurizers =
-            fs |> Array.map (fun f -> observations |> extract f)
-    
-        let featurize obs = (featurizers |> Array.unzip |> snd |> Array.map (fun f -> f obs))
+        // Convert label to integer, and integer to label
+        let labelizer, predicted = prepareLabels labels
+        // Convert observation to integer array
+        let featurizer = prepareFeaturizer observations fs
         
-        let reverseLabels = 
-            fst labelizer 
-            |> Map.toSeq 
-            |> Seq.map (fun (k, v) -> (v, k)) 
-            |> Map.ofSeq
-        let predicted x = reverseLabels.[x]
-
-        let transform = trainingConverter (snd labelizer) (featurizers |> Array.unzip |> snd)
-        let trainingSet = prepareTraining examples transform
+        let trainingSet = prepareTraining examples (Array.length fs) labelizer featurizer
 
         let forest = forest trainingSet [ 0.. (examples |> Array.length) - 1 ] minLeaf bagging iters rng
         
-        let classifier obs = (forestDecide forest obs featurize predicted)
+        let classifier obs = (forestDecide forest obs featurizer predicted)
         classifier      
