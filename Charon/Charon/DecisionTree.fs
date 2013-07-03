@@ -12,6 +12,13 @@ module DecisionTree =
     // Training Set = Labels and Features
     type TrainingSet = Feature * Feature []
 
+    //type Categorical<'a> = 'a -> string option
+
+    let StringCategory text =
+        if String.IsNullOrWhiteSpace(text)
+        then None
+        else Some(text)
+
     // A tree is either 
     // a Leaf (a final conclusion has been reached), or
     // a Branch (depending on the outcome on a feature,

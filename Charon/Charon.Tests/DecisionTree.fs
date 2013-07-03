@@ -94,4 +94,24 @@ module ``DecisionTree Tests`` =
         decide tree [| 0 |] |> should equal 42 // 0 replaced by likely
         decide tree [| 3 |] |> should equal 42 // 3 replaced by likely
 
+    [<Test>]
+    let ``extractor should pipe None to 0 value`` () =
+        
+        let data = [| None; Some("A"); Some("B"); |]
+        let f x = id x
+        let map, feature = extract f data
+
+        let a = map.["A"]
+        let b = map.["B"]
+
+        a |> should greaterThan 0
+        b |> should greaterThan 0
+        a <> b |> should equal true
+
+        feature (Some("A")) |> should equal a
+        feature (Some("B")) |> should equal b
+        feature (Some("C")) |> should equal 0
+        feature None |> should equal 0
+
+
 

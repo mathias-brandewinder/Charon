@@ -64,7 +64,7 @@ let readDataset () =
         |> Array.map (fun line -> line.Split(','))
         |> Array.filter (fun line -> Array.length line = 9)
         |> Array.map (fun line ->
-            line.[8], // the label
+            line.[8] |> StringCategory, // the label
             { Var1 = line.[0];
               Var2 = line.[1];
               Var3 = line.[2];
@@ -86,14 +86,14 @@ let nursery () =
 
     // define how the features should be extracted
     let features = 
-        [| (fun x -> x.Var1);
-           (fun x -> x.Var2);
-           (fun x -> x.Var3);
-           (fun x -> x.Var4);
-           (fun x -> x.Var5);
-           (fun x -> x.Var6);
-           (fun x -> x.Var7);
-           (fun x -> x.Var8); |]
+        [| (fun x -> x.Var1 |> StringCategory);
+           (fun x -> x.Var2 |> StringCategory);
+           (fun x -> x.Var3 |> StringCategory);
+           (fun x -> x.Var4 |> StringCategory);
+           (fun x -> x.Var5 |> StringCategory);
+           (fun x -> x.Var6 |> StringCategory);
+           (fun x -> x.Var7 |> StringCategory);
+           (fun x -> x.Var8 |> StringCategory); |]
 
     let minLeaf = 5
     let id3 = createID3Classifier data features minLeaf
@@ -102,7 +102,7 @@ let nursery () =
     let correct = 
         data
         |> Array.averageBy (fun (label, obs) -> 
-            if label = id3 obs then 1. else 0.)
+            if label = Some(id3 obs) then 1. else 0.)
     printfn "Correct: %.4f" correct
 
     let minLeaf = 5 // min observations per leaf
@@ -114,5 +114,5 @@ let nursery () =
     let correct = 
         data
         |> Array.averageBy (fun (label, obs) -> 
-            if label = forest obs then 1. else 0.)
+            if label = Some(forest obs) then 1. else 0.)
     printfn "Correct: %.4f" correct
