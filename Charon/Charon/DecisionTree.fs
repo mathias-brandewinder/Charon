@@ -149,7 +149,7 @@ module DecisionTree =
         let fs = snd dataset |> Array.length
         let remaining = Set.ofList [ 0 .. (fs - 1) ]
         let tree = build dataset filter remaining any minLeaf
-        decide tree
+        decide tree, tree
 
     // prepare an array of observed values into a Feature.
     let prepare (obs: int seq) =
@@ -203,10 +203,17 @@ module DecisionTree =
             fs 
             |> Array.map (fun f -> observations |> extract f)
             |> Array.unzip
+        let reverseFeatures =
+            featuresMap
+            |> Array.map (fun map ->
+                map
+                |> Map.toSeq
+                |> Seq.map (fun (k, v) -> (v, k))
+                |> Map.ofSeq)
         // currently not returning the map,
         // but might do so later for diagnosis
         let featurizer obs = featurizers |> Array.map (fun f -> f obs)
-        featurizer
+        (featurizer, reverseFeatures)
 
     // Create a function to extract labels and features
     // from a sequence of training examples (with a label and features)
@@ -226,6 +233,75 @@ module DecisionTree =
         labels |> Seq.map (fun kv -> kv.Key, List.rev kv.Value) |> Map.ofSeq,
         [| for feat in features -> feat |> Seq.map (fun kv -> kv.Key, List.rev kv.Value) |> Map.ofSeq |]
 
+    // Tree rendering utility: renders "pipes"
+    // for active branches
+    let private pad (actives: int Set) (depth: int) =
+        String.Join("", 
+            [|  for i in 0 .. (depth - 1) do 
+                    if (actives.Contains i) 
+                    then yield "│   " 
+                    else yield "   " |])
+
+    // Recursively draw the nodes of the tree
+    let rec private plot (tree: Tree) 
+                         (actives: int Set) 
+                         (depth: int) 
+                         (predictor: int -> string)
+                         (reverseFeatures: Map<int,string>[]) =
+        match tree with
+        | Leaf(x) -> printfn "%s -> %s" (pad actives depth) (predictor x)
+        | Branch(f,d,next) ->        
+            let last = next |> Map.toArray |> Array.length
+            let fMap = reverseFeatures.[f]
+            next 
+            |> Map.toArray
+            |> Array.iteri (fun i (x, n) -> 
+                let actives' = 
+                    if (i = (last - 1)) 
+                    then Set.remove depth actives 
+                    else actives
+                let pipe = 
+                    if (i = (last - 1)) 
+                    then "└" else "├"
+                match n with
+                | Leaf(z) -> 
+                    printfn "%s%s Feat %i = %s → %s" (pad actives depth) pipe f (fMap.[x]) (predictor z)
+                | Branch(_) -> 
+                    printfn "%s%s Feat %i = %s" (pad actives' depth) pipe f (fMap.[x]) 
+                    plot n (Set.add (depth + 1) actives') (depth + 1) predictor reverseFeatures)
+
+    let rec private plot2 (tree: Tree) 
+                         (actives: int Set) 
+                         (depth: int) 
+                         (predictor: int -> string)
+                         (reverseFeatures: Map<int,string>[]) =
+        match tree with
+        | Leaf(x) -> printfn "%s -> %s" (pad actives depth) (predictor x)
+        | Branch(f,d,next) ->        
+            let last = next |> Map.toArray |> Array.length
+            let fMap = reverseFeatures.[f]
+            next 
+            |> Map.toArray
+            |> Array.iteri (fun i (x, n) -> 
+                let actives' = 
+                    if (i = (last - 1)) 
+                    then Set.remove depth actives 
+                    else actives
+                let pipe = 
+                    if (i = (last - 1)) 
+                    then "└" else "├"
+                match n with
+                | Leaf(z) -> 
+                    printfn "%s%s Feat %i = %s → %s" (pad actives depth) pipe f (fMap.[x]) (predictor z)
+                | Branch(_) -> 
+                    printfn "%s%s Feat %i = %s" (pad actives' depth) pipe f (fMap.[x]) 
+                    plot n (Set.add (depth + 1) actives') (depth + 1) predictor reverseFeatures)
+
+
+    // Draw the entire tree
+    let render tree predictor reverseFeatures = 
+        plot tree (Set.ofList [0]) 0 predictor reverseFeatures
+
     // Create a full ID3 Classification Tree
     let createID3Classifier (examples: (string option * 'a) []) 
                             (fs: ('a -> string option)[]) 
@@ -235,14 +311,16 @@ module DecisionTree =
         // Convert label to integer, and integer to label
         let labelizer, predicted = prepareLabels labels
         // Convert observation to integer array
-        let featurizer = prepareFeaturizer observations fs
+        let featurizer, reverseMap = prepareFeaturizer observations fs
         
         let trainingSet = prepareTraining examples (Array.length fs) labelizer featurizer
 
-        let classifier = ID3Classifier trainingSet [ 0.. (examples |> Array.length) - 1 ] minLeaf
+        let classifier, tree = ID3Classifier trainingSet [ 0.. (examples |> Array.length) - 1 ] minLeaf
+        // this needs to be returned as function result, too
+        let display = render tree predicted reverseMap
 
         let f obs = (classifier (featurizer obs)) |> predicted
-        f        
+        f       
 
     // work in progress: Random Forest
     
@@ -308,11 +386,12 @@ module DecisionTree =
         // Convert label to integer, and integer to label
         let labelizer, predicted = prepareLabels labels
         // Convert observation to integer array
-        let featurizer = prepareFeaturizer observations fs
+        let featurizer, reverseMap = prepareFeaturizer observations fs
         
         let trainingSet = prepareTraining examples (Array.length fs) labelizer featurizer
 
         let forest = forest trainingSet [ 0.. (examples |> Array.length) - 1 ] minLeaf bagging iters rng
         
         let classifier obs = (forestDecide forest obs featurizer predicted)
-        classifier      
+        classifier
+

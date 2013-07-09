@@ -35,6 +35,8 @@ let test (size: int) (feat: int) (outcomes: int) =
 
     printfn "Tree building: %i ms" timer.ElapsedMilliseconds
 
+    tree
+
 // Test on the Nursery dataset from UC Irvine ML Repository:
 // http://archive.ics.uci.edu/ml/machine-learning-databases/nursery/
 
