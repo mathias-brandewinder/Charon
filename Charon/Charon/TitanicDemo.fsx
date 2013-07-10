@@ -23,7 +23,7 @@ type Passenger = {
 
 // now let's retrieve examples from the training CSV file
 // http://www.kaggle.com/c/titanic-gettingStarted/data
-let path = @"C:\Users\Mathias\Documents\GitHub\Charon\Charon\Charon\train.csv"
+let path = @"C:\Users\Mathias Brandewinder\Documents\GitHub\Charon\Charon\Charon\train.csv"
 let data = CsvFile.Load(path).Cache()
 
 let trainingSet =
@@ -42,12 +42,12 @@ let trainingSet =
             Embarked = line.GetColumn "Embarked" } |]
 
 // ID3 Decision Tree example
-let treeExample =
+let treeExample () =
     
-    // let's define what features we want included
-    let features = 
-        [| (fun x -> x.Sex |> StringCategory);
-           (fun x -> x.Class |> StringCategory); |]
+    // How about a model with more features?
+    let features = [| 
+        (fun x -> x.Sex |> StringCategory);
+        (fun x -> x.Class |> StringCategory); |]
 
     // train the classifier
     let minLeaf = 5
@@ -62,7 +62,7 @@ let treeExample =
     printfn "Correct: %.4f" correct
 
 // Random Forest example
-let forestExample = 
+let forestExample () = 
 
     // let's define what features we want included
     let binnedAge (age: string) =
