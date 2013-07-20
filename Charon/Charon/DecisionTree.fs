@@ -206,14 +206,17 @@ module DecisionTree =
         // but might do so later for diagnosis
         labelizer, predictor
 
-    let private prepareFeaturizer (observations: 'a seq) (fs: ('a -> string option) [])=
+    let private prepareFeaturizer (observations: 'a seq) (fs: (string * ('a -> string option)) [])=
         let featuresMap, featurizers =
             fs 
+            |> Array.map snd
             |> Array.map (fun f -> observations |> extract f)
             |> Array.unzip
+        let names = fs |> Array.map fst
         let reverseFeatures =
-            featuresMap
-            |> Array.map (fun map ->
+            Array.zip names featuresMap
+            |> Array.map (fun (name, map) ->
+                name,
                 map
                 |> Map.toSeq
                 |> Seq.map (fun (k, v) -> (v, k))
@@ -260,13 +263,13 @@ module DecisionTree =
                          (actives: int Set) 
                          (depth: int) 
                          (predictor: int -> string)
-                         (reverseFeatures: Map<int,string>[]) =
+                         (reverseFeatures: (string * Map<int,string>)[]) =
         seq {
             match tree with
             | Leaf(x) -> yield sprintf "%s -> %s" (pad actives depth) (predictor x)
             | Branch(f,d,next) ->        
                 let last = next |> Map.toArray |> Array.length
-                let fMap = reverseFeatures.[f]
+                let (fName, fMap) = reverseFeatures.[f]
                 let next' =
                     next 
                     |> Map.toArray
@@ -281,9 +284,9 @@ module DecisionTree =
                         then "└" else "├"
                     match n with
                     | Leaf(z) -> 
-                        yield sprintf "%s%s Feat %i = %s → %s" (pad actives depth) pipe f (fMap.[x]) (predictor z)
+                        yield sprintf "%s%s %s = %s → %s" (pad actives depth) pipe fName (fMap.[x]) (predictor z)
                     | Branch(_) -> 
-                        yield sprintf "%s%s Feat %i = %s" (pad actives' depth) pipe f (fMap.[x]) 
+                        yield sprintf "%s%s %s = %s" (pad actives' depth) pipe fName (fMap.[x]) 
                         yield! plot n (Set.add (depth + 1) actives') (depth + 1) predictor reverseFeatures
         }
      
@@ -311,7 +314,7 @@ module DecisionTree =
 
     // Create a full ID3 Classification Tree
     let createID3Classifier (examples: (string option * 'a) []) 
-                            (fs: ('a -> string option)[]) 
+                            (fs: (string * ('a -> string option))[]) 
                             (config: ID3Config) =
         // Unwrap labels and observations
         let labels, observations = Array.unzip examples
@@ -400,7 +403,7 @@ module DecisionTree =
 
     // there is obvious duplication here with ID3, need to clean up
     let createForestClassifier (examples: (string option * 'a) []) 
-                               (fs: ('a -> string option)[])
+                               (fs: (string * ('a -> string option))[])
                                (config: RFConfig) =
         // Unwrap labels and observations
         let labels, observations = Array.unzip examples

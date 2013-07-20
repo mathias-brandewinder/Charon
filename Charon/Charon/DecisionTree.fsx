@@ -17,14 +17,14 @@ open System.Diagnostics
 // retrieved as a string, which is treated
 // as a categorical.
 type observation = {    
-    Var1: string;
-    Var2: string;
-    Var3: string;
-    Var4: string;
-    Var5: string;
-    Var6: string;
-    Var7: string;
-    Var8: string; }
+    parents: string;
+    has_nurs: string;
+    form: string;
+    children: string;
+    housing: string;
+    finance: string;
+    social: string;
+    health: string; }
 
 let readDataset () =
     // Path to the data file:
@@ -39,14 +39,14 @@ let readDataset () =
         |> Array.filter (fun line -> Array.length line = 9)
         |> Array.map (fun line ->
             line.[8] |> StringCategory, // the label
-            { Var1 = line.[0];
-              Var2 = line.[1];
-              Var3 = line.[2];
-              Var4 = line.[3];
-              Var5 = line.[4];
-              Var6 = line.[5];
-              Var7 = line.[6];
-              Var8 = line.[7]; })
+            { parents = line.[0];
+              has_nurs = line.[1];
+              form = line.[2];
+              children = line.[3];
+              housing = line.[4];
+              finance = line.[5];
+              social = line.[6];
+              health = line.[7]; })
 
     timer.Stop()
     printfn "Data set read: %i ms" timer.ElapsedMilliseconds
@@ -60,14 +60,14 @@ let nursery () =
 
     // define how the features should be extracted
     let features = 
-        [| (fun x -> x.Var1 |> StringCategory);
-           (fun x -> x.Var2 |> StringCategory);
-           (fun x -> x.Var3 |> StringCategory);
-           (fun x -> x.Var4 |> StringCategory);
-           (fun x -> x.Var5 |> StringCategory);
-           (fun x -> x.Var6 |> StringCategory);
-           (fun x -> x.Var7 |> StringCategory);
-           (fun x -> x.Var8 |> StringCategory); |]
+        [| ("parents", fun x -> x.parents |> StringCategory);
+           ("has_nurs", fun x -> x.has_nurs |> StringCategory);
+           ("form", fun x -> x.form |> StringCategory);
+           ("children", fun x -> x.children |> StringCategory);
+           ("housing", fun x -> x.housing |> StringCategory);
+           ("finance", fun x -> x.finance |> StringCategory);
+           ("social", fun x -> x.social |> StringCategory);
+           ("health", fun x -> x.health |> StringCategory); |]
 
     let treeClassifier, report = createID3Classifier data features { DefaultID3Config with DetailLevel = Verbose }
     report.Value.Pretty()
