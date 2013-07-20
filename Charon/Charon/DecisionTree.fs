@@ -255,33 +255,42 @@ module DecisionTree =
                     then yield "│   " 
                     else yield "   " |])
 
-    // Recursively draw the nodes of the tree
+    // renders a decision tree
     let rec private plot (tree: Tree) 
                          (actives: int Set) 
                          (depth: int) 
                          (predictor: int -> string)
                          (reverseFeatures: Map<int,string>[]) =
-        match tree with
-        | Leaf(x) -> printfn "%s -> %s" (pad actives depth) (predictor x)
-        | Branch(f,d,next) ->        
-            let last = next |> Map.toArray |> Array.length
-            let fMap = reverseFeatures.[f]
-            next 
-            |> Map.toArray
-            |> Array.iteri (fun i (x, n) -> 
-                let actives' = 
-                    if (i = (last - 1)) 
-                    then Set.remove depth actives 
-                    else actives
-                let pipe = 
-                    if (i = (last - 1)) 
-                    then "└" else "├"
-                match n with
-                | Leaf(z) -> 
-                    printfn "%s%s Feat %i = %s → %s" (pad actives depth) pipe f (fMap.[x]) (predictor z)
-                | Branch(_) -> 
-                    printfn "%s%s Feat %i = %s" (pad actives' depth) pipe f (fMap.[x]) 
-                    plot n (Set.add (depth + 1) actives') (depth + 1) predictor reverseFeatures)
+        seq {
+            match tree with
+            | Leaf(x) -> yield sprintf "%s -> %s" (pad actives depth) (predictor x)
+            | Branch(f,d,next) ->        
+                let last = next |> Map.toArray |> Array.length
+                let fMap = reverseFeatures.[f]
+                let next' =
+                    next 
+                    |> Map.toArray
+                    |> Array.mapi (fun i (x, n) -> (i, x, n))
+                for (i, x, n) in next' do
+                    let actives' = 
+                        if (i = (last - 1)) 
+                        then Set.remove depth actives 
+                        else actives
+                    let pipe = 
+                        if (i = (last - 1)) 
+                        then "└" else "├"
+                    match n with
+                    | Leaf(z) -> 
+                        yield sprintf "%s%s Feat %i = %s → %s" (pad actives depth) pipe f (fMap.[x]) (predictor z)
+                    | Branch(_) -> 
+                        yield sprintf "%s%s Feat %i = %s" (pad actives' depth) pipe f (fMap.[x]) 
+                        yield! plot n (Set.add (depth + 1) actives') (depth + 1) predictor reverseFeatures
+        }
+     
+    let pretty tree predictor reverseFeatures =
+        fun () ->
+            plot tree (Set.ofList [0]) 0 predictor reverseFeatures
+            |> Seq.iter (printfn "%s")
 
     // Draw the entire tree
     let render tree predictor reverseFeatures = 
@@ -297,7 +306,8 @@ module DecisionTree =
         DetailLevel = Minimal }
 
     type ID3Report = {
-        Tree: Tree; }
+        Tree: Tree;
+        Pretty: unit -> unit }
 
     // Create a full ID3 Classification Tree
     let createID3Classifier (examples: (string option * 'a) []) 
@@ -317,7 +327,7 @@ module DecisionTree =
         featurizer >> classifier >> predicted,
         match (config.DetailLevel) with
         | Minimal -> None
-        | Verbose -> Some({ Tree = tree })
+        | Verbose -> Some({ Tree = tree; Pretty = pretty tree predicted reverseMap })
 
     // work in progress: Random Forest
     

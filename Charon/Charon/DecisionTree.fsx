@@ -69,9 +69,10 @@ let nursery () =
            (fun x -> x.Var7 |> StringCategory);
            (fun x -> x.Var8 |> StringCategory); |]
 
-    let treeClassifier, report = createID3Classifier data features DefaultID3Config
+    let treeClassifier, report = createID3Classifier data features { DefaultID3Config with DetailLevel = Verbose }
+    report.Value.Pretty()
 
-    printfn "Forecast evaluation"
+    printfn "Forecast evaluation: tree"
     let correct = 
         data
         |> Array.averageBy (fun (label, obs) -> 
@@ -82,7 +83,8 @@ let nursery () =
     let rng = Random(42) // setting explicit RNG to replicate results
     let config = { DefaultRFConfig with RNG = Some(rng); Iterations = iters }
     let forestClassifier, report = createForestClassifier data features config
-            
+
+    printfn "Forecast evaluation: forest"            
     let correct = 
         data
         |> Array.averageBy (fun (label, obs) -> 
