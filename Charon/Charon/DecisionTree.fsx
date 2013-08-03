@@ -1,13 +1,33 @@
 ﻿#load "Index.fs"
 #load "DecisionTree.fs"
+#r @"..\packages\FSharp.Data.1.1.9\lib\net40\FSharp.Data.dll"
 
 open Charon
 open Charon.DecisionTree
 open System
 open System.IO
 open System.Diagnostics
+open FSharp.Data
 
 #time
+
+type DataSet = CsvProvider<"titanic.csv", 
+                           Schema="PassengerId=int, Pclass->Class, Parch->ParentsOrChildren, SibSp->SiblingsOrSpouse", 
+                           SafeMode=true, 
+                           PreferOptionals=true>
+type Passenger = DataSet.Row
+
+let training =
+    use data = new DataSet()
+    [| for passenger in data.Data -> 
+        passenger.Survived |> Categorical, // the label
+        passenger |]
+
+let features = [|
+    "Sex", (fun (x:Passenger) -> x.Sex |> Categorical);
+    "Class", (fun x -> x.Class |> Categorical); |]
+
+let classifier, report = createID3Classifier training features { DefaultID3Config with DetailLevel = Verbose }
 
 // Test on the Nursery dataset from UC Irvine ML Repository:
 // http://archive.ics.uci.edu/ml/machine-learning-databases/nursery/
@@ -60,7 +80,7 @@ let nursery () =
 
     // define how the features should be extracted
     let features = 
-        [| ("parents", fun x -> x.parents |> StringCategory);
+        [| ("parents", fun x -> x.parents |> Some |> Categorical);
            ("has_nurs", fun x -> x.has_nurs |> StringCategory);
            ("form", fun x -> x.form |> StringCategory);
            ("children", fun x -> x.children |> StringCategory);
