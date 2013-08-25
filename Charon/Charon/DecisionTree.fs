@@ -14,6 +14,9 @@ module DecisionTree =
     // Output detail level
     type DetailLevel = Minimal | Verbose
 
+    let Categorical<'a> (value: Option<'a>) =
+        value |> Option.map (fun x -> x.ToString())
+
     let StringCategory text =
         if String.IsNullOrWhiteSpace(text)
         then None
