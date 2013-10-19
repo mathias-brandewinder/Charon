@@ -39,3 +39,20 @@ module ``Index Tests`` =
 
         Index.merge index1 index2 |> should equal [ 0; 1; 1; 2; 2; 2; 3; 4; 5 ]
         Index.merge index2 index1 |> should equal [ 0; 1; 1; 2; 2; 2; 3; 4; 5 ]
+
+    [<Test>]
+    let ``Validate out-of-bag`` () =
+
+        Index.complement (0, 2) [ 0; 1; 2 ] |> should equal []
+        
+        Index.complement (0, 2) [ 0; 1; ] |> should equal [ 2 ]
+        Index.complement (0, 2) [ 1; 2; ] |> should equal [ 0 ]
+        Index.complement (0, 2) [ 0; 2; ] |> should equal [ 1 ]
+        
+        Index.complement (0, 2) [] |> should equal [ 0; 1; 2 ]
+        
+        Index.complement (0, 1) [ 0; 1; 2 ] |> should equal []
+        Index.complement (1, 2) [ 0; 1; 2 ] |> should equal []
+
+        Index.complement (0, 1) [ 2; 3; 4 ] |> should equal [ 0; 1; ]
+        //Index.complement (5, 6) [ 2; 3; 4 ] 

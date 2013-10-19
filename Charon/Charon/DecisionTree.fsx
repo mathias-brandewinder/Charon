@@ -12,7 +12,7 @@ open FSharp.Data
 #time
 
 type DataSet = CsvProvider<"titanic.csv", 
-                           Schema="PassengerId=int, Pclass->Class, Parch->ParentsOrChildren, SibSp->SiblingsOrSpouse", 
+                           Schema ="PassengerId=int, Pclass->Class, Parch->ParentsOrChildren, SibSp->SiblingsOrSpouse", 
                            SafeMode=true, 
                            PreferOptionals=true>
 type Passenger = DataSet.Row
@@ -28,6 +28,29 @@ let features = [|
     "Class", (fun x -> x.Class |> Categorical); |]
 
 let classifier, report = createID3Classifier training features { DefaultID3Config with DetailLevel = Verbose }
+report.Value.Pretty()
+
+// Correctly classified
+[| for passenger in training -> 
+    if classifier(snd passenger) = (fst passenger).Value then 1. else 0. |]
+|> Array.average
+    
+let rfFeatures = [|
+    "Sex", (fun (x:Passenger) -> x.Sex |> Categorical);
+    "Class", (fun x -> x.Class |> Categorical);
+    "Embark", (fun x -> x.Embarked |> Categorical);
+    "Family", (fun x -> x.ParentsOrChildren |> Categorical);
+    "Spouse", (fun x -> x.SiblingsOrSpouse |> Categorical);
+    "Age", (fun x -> x.Age |> Option.map (fun age -> if age < 10m then "Kid" else "Adult") |> Categorical);  |]
+
+let rfClassifier, rfReport = createForestClassifier training rfFeatures { DefaultRFConfig with DetailLevel = Verbose }
+
+
+
+[| for passenger in training -> 
+    if rfClassifier(snd passenger) = (fst passenger).Value then 1. else 0. |]
+|> Array.average
+
 
 // Test on the Nursery dataset from UC Irvine ML Repository:
 // http://archive.ics.uci.edu/ml/machine-learning-databases/nursery/

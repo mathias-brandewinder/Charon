@@ -15,7 +15,7 @@ module DecisionTree =
     type DetailLevel = Minimal | Verbose
 
     let Categorical<'a> (value: Option<'a>) =
-        value |> Option.map string
+        value |> Option.map (fun v -> v.ToString()) // can I do (string)v anyhow?
 
     let StringCategory text =
         if String.IsNullOrWhiteSpace(text)

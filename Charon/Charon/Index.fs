@@ -40,3 +40,17 @@ module Index =
     // Merges 2 indices 
     let merge (a: index) (b: index) =
         mer [] a b |> List.rev
+
+    let rec private oob acc rest curr (lo, hi) =
+        match rest with
+        | [] ->
+            if curr <= hi 
+            then oob (curr::acc) rest (curr + 1) (lo, hi)
+            else acc
+        | hd::tl ->
+            if curr < hd
+            then oob (curr::acc) rest (curr + 1) (lo, hi)
+            else oob acc tl (curr + 1) (lo, hi)
+
+    let complement (lo, hi) (i: index) =
+        oob [] i lo (lo, hi) |> List.rev
