@@ -44,6 +44,7 @@
     <Compile Include="Index.fs" />
     <Compile Include="DecisionTree.fs" />
     <None Include="DecisionTree.fsx" />
+    <None Include="Continuous.fsx" />
   </ItemGroup>
   <PropertyGroup>
     <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>
