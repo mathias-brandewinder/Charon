@@ -1,15 +1,12 @@
-﻿type Tree = 
+﻿#load "Continuous.fs"
+
+open System
+open Charon.Continuous
+
+type Tree = 
     | Leaf of int // decision reached
     | CatBranch of int * Tree []
     | NumBranch of int * float list * Tree []
-
-let find cuts v =
-    let rec walk cs i =
-        match cs with
-        | [] -> i
-        | hd::tl -> 
-            if v < hd then i else walk tl i+1
-    walk cuts 0
 
 let rec decide tree ((cat:int[]),(num:float[])) =
     match tree with
@@ -19,7 +16,7 @@ let rec decide tree ((cat:int[]),(num:float[])) =
         decide (trees.[f]) (cat,num)
     | NumBranch(feat,cuts,trees) ->
         let f = num.[feat] // find value of feature
-        let i = find cuts f // index if value wrt cuts
+        let i = indexOf cuts f // index if value wrt cuts
         decide (trees.[i]) (cat,num)
 
 let Test = 
@@ -49,3 +46,12 @@ let features = [
     (fun obs -> obs.Float |> Some) |> Numerical;
     (fun obs -> obs.Int |> float |> Some) |> Numerical;
     (fun obs -> obs.String |> Some) |> Categorical ]
+
+let rng = Random()
+let size = 100000
+let keys = 5
+let feature = [| for i in 1 .. size -> rng.NextDouble(), rng.Next(keys) |]
+
+let filter = [| for i in 1 .. 10000 -> rng.Next(size) |]
+
+let test = splitValue keys feature filter
