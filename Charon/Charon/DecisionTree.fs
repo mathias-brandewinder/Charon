@@ -28,7 +28,7 @@ module DecisionTree =
     // more investigation is needed).
     type Tree = 
     | Leaf of int // decision
-    | Branch of int * int * Map<int, Tree> // feature index, default choice, & sub-trees by outcome
+    | CatBranch of int * int * Map<int, Tree> // feature index, default choice, & sub-trees by outcome
 
     let private h (category: int) (total: int) = 
         if total = 0 then 0. // is this right? failwith "At least one observation is needed."
@@ -126,7 +126,7 @@ module DecisionTree =
                 let remaining = remaining |> Set.remove index
                 let splits = filterBy filter feature
                 let likely = splits |> mostLikely // what to pick when missing value?
-                Branch(index, likely,
+                CatBranch(index, likely,
                     splits
                     |> Map.map (fun v indices ->
                            let tree = growTree dataset indices remaining featureSelector minLeaf
@@ -138,7 +138,7 @@ module DecisionTree =
     let rec decide (tree: Tree) (obs: int []) =
         match tree with
         | Leaf(outcome) -> outcome
-        | Branch(feature, mostLikely, next) ->
+        | CatBranch(feature, mostLikely, next) ->
               let value = obs.[feature]
               if Map.containsKey value next
               then decide next.[value] obs
@@ -270,7 +270,7 @@ module DecisionTree =
         seq {
             match tree with
             | Leaf(x) -> yield sprintf "%s -> %s" (pad actives depth) (predictor x)
-            | Branch(f,d,next) ->        
+            | CatBranch(f,d,next) ->        
                 let last = next |> Map.toArray |> Array.length
                 let (fName, fMap) = reverseFeatures.[f]
                 let next' =
@@ -288,7 +288,7 @@ module DecisionTree =
                     match n with
                     | Leaf(z) -> 
                         yield sprintf "%s%s %s = %s → %s" (pad actives depth) pipe fName (fMap.[x]) (predictor z)
-                    | Branch(_) -> 
+                    | CatBranch(_) -> 
                         yield sprintf "%s%s %s = %s" (pad actives' depth) pipe fName (fMap.[x]) 
                         yield! plot n (Set.add (depth + 1) actives') (depth + 1) predictor reverseFeatures
         }
