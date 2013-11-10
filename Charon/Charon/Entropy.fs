@@ -33,7 +33,7 @@ module MDL =
     let private logb n b = log n / log b
     
     // Count classes containing elements
-    let private cla (count:Count) = count |> Seq.reduce (fun acc x -> if x > 0 then acc + 1 else acc)
+    let cla (count:Count) = count |> Seq.fold (fun acc x -> if x > 0 then acc + 1 else acc) 0
 
     // Minimum entropy gain required to accept split 
     let minG ((left:Count), (right:Count)) =
@@ -57,5 +57,5 @@ module MDL =
 
     // Value of splitting by left / right
     let splitValue left right =
-        let v = gain (left,right) - minG (left, right)
+        let v = gain (left,right) - minG (left,right)
         if v > 0. then Some(v) else None

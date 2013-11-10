@@ -6,7 +6,7 @@ module ``Entropy Tests`` =
     open FsUnit
 
     open Charon.Entropy
-    
+    open Charon.MDL
 
     [<Test>]
     let ``add counts should sum elements pair-wise`` () =
@@ -49,3 +49,15 @@ module ``Entropy Tests`` =
 
         let count1, count2 = [| 1; 1; |], [| 1; 1; |]
         gain (count1,count2) |> should equal 0.
+
+    [<Test>]
+    let ``trivial check MDL split value`` () =
+        
+        let count1, count2 = [| 100; 0; |], [| 0; 100; |]
+        splitValue count1 count2 |> Option.get |> should greaterThan 0.
+
+    [<Test>]
+    let ``cla should count non empty counts`` () =
+        
+        let count = [| 10; 0; 20 |]
+        cla count |> should equal 2

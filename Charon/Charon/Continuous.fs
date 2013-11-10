@@ -71,7 +71,7 @@ module Continuous =
         data
         |> Array.sumBy (fun (x,y) -> 
             let s = Array.length y |> float
-            (s/size) * Entropy.h y)
+            (s/size) * h y)
 
     let splitValue keys feature filter =
         let filtered = 
@@ -83,7 +83,7 @@ module Continuous =
             |> Seq.countBy (fun  (x,y) -> y)
             |> Seq.map snd
             |> Seq.toArray
-            |> Entropy.h
+            |> h
         let featurized =
             filtered
             |> Array.map (fun (v,c) -> indexOf splits v, c)
