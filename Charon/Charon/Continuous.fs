@@ -4,61 +4,10 @@ module Continuous =
 
     open System
     open System.Collections.Generic
+    open Charon.Entropy
+    open Charon.MDL              
 
-    let add count1 count2 =
-        (count1, count2) ||> Array.map2 (fun x y -> x + y)
-
-    let sub count1 count2 =
-        (count1, count2) ||> Array.map2 (fun x y -> x - y)
-
-    let logb n b = log n / log b
-
-    let ent data =
-        let total = data |> Array.sum |> float
-        data 
-        |> Seq.sumBy (fun x -> 
-            let p = float x / total
-            if p > 0. then - p * log p else 0.)
-           
-    // Entropy gained by splitting into left/right
-    let gain (left, right) =
-        let total = add left right
-        let leftS = left |> Array.sum |> float 
-        let rightS = right  |> Array.sum |> float
-        let totalS = leftS + rightS
-        ent total - ent left * (leftS/totalS) - ent right * (rightS/totalS)
-    
-    // Count classes represented in a count 
-    let cla data = 
-        data 
-        |> Array.filter (fun x -> x > 0) 
-        |> Array.length
-
-    // Entropy gain required to split left/right
-    let minG (left, right) =
-        let total = add left right
-        let size = total |> Array.sum |> float
-        let classes = cla total
-
-        let totalc = classes |> float
-        let leftc = cla left |> float
-        let rightc = cla right |> float
-    
-        let h = ent total
-        let lefth = ent left
-        let righth = ent right
-
-        let delta =     
-            logb (pown 3. classes - 2.) 2. - 
-            (totalc * h - leftc * lefth - rightc * righth)
-        ((logb (size - 1.) 2.) / size) + (delta / size)
-
-    // Value of splitting by left / right
-    let valueOf left right =
-        let v = gain (left,right) - minG (left, right)
-        if v > 0. then Some(v) else None
-
-    let folder (data:(_*int[])[]) (lft,rgt,i) = 
+    let folder (data:(_*Count)[]) (lft,rgt,i) = 
         Some((lft,rgt,i), (add lft (snd data.[i]), sub rgt (snd data.[i]), i+1))
 
     // This function assumes data is sorted by first key
@@ -70,9 +19,9 @@ module Continuous =
         let fold = folder data
 
         Seq.unfold fold initial
-        |> Seq.map (fun (lft,rgt,i) -> valueOf lft rgt, i) 
+        |> Seq.map (fun (lft,rgt,i) -> splitValue lft rgt, i) 
         |> Seq.take (data.Length)
-        |> Seq.filter (fun (x,y) -> x <> None)
+        |> Seq.filter (fun (x,y) -> Option.isSome x)
         |> Seq.map (fun (x,y) -> x.Value, y)
         |> fun x -> if Seq.isEmpty x then None else x |> Seq.maxBy fst |> Some
 
@@ -88,9 +37,9 @@ module Continuous =
         splitter c data [] |> List.sort
 
     let prepare keys data =
-        let dict = Dictionary<float,int[]>()
+        let dict = Dictionary<float,Count>()
         let empty () = [| for i in 1 .. keys -> 0 |]
-        let update (count:int[]) value = 
+        let update (count:Count) value = 
             count.[value] <- count.[value] + 1
             count
         for (x,y) in data do
@@ -122,7 +71,7 @@ module Continuous =
         data
         |> Array.sumBy (fun (x,y) -> 
             let s = Array.length y |> float
-            (s/size) * ent y)
+            (s/size) * Entropy.h y)
 
     let splitValue keys feature filter =
         let filtered = 
@@ -134,7 +83,7 @@ module Continuous =
             |> Seq.countBy (fun  (x,y) -> y)
             |> Seq.map snd
             |> Seq.toArray
-            |> ent
+            |> Entropy.h
         let featurized =
             filtered
             |> Array.map (fun (v,c) -> indexOf splits v, c)
