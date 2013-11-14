@@ -60,18 +60,33 @@ module Continuous =
 
     type Filter = int []
 
+    let subindex (data: (float*_)[]) (filter:Filter) splits =
+        let keys = List.length splits
+        let map = seq { for k in 0 .. keys -> k, [||] } |> Map.ofSeq // can probably make array
+        seq { for i in filter -> i, indexOf splits (data.[i] |> fst) }
+        |> Seq.groupBy snd
+        |> Seq.map (fun (x,grp) -> x, grp |> Seq.map fst |> Seq.toArray)
+        |> Seq.fold (fun map (k,v) -> Map.add k v map) map
+
     let filterBy (feature: _ []) (filter:Filter) =
         filter |> Array.map (fun i -> feature.[i])
 
-    let condent (data: (int*int[])[]) =
+    let condent (data: int[][]) =
         let size = 
             data 
-            |> Array.sumBy (fun (x,y) -> Array.length y)
+            |> Array.sumBy (fun y -> Array.sum y)
             |> float
         data
-        |> Array.sumBy (fun (x,y) -> 
-            let s = Array.length y |> float
+        |> Array.sumBy (fun y -> 
+            let s = Array.sum y |> float
             (s/size) * h y)
+
+    let binnize splits keys feature =
+        let splitsCount = List.length splits + 1
+        let bins = [| for s in 1 .. splitsCount -> [| for k in 1 .. keys -> 0 |] |]
+        for (value,key) in feature do
+            bins.[indexOf splits value].[key] <- bins.[indexOf splits value].[key] + 1
+        bins
 
     let splitValue keys feature filter =
         let filtered = 
@@ -84,14 +99,10 @@ module Continuous =
             |> Seq.map snd
             |> Seq.toArray
             |> h
-        let featurized =
-            filtered
-            |> Array.map (fun (v,c) -> indexOf splits v, c)
-            |> Seq.groupBy fst
-            |> Seq.map (fun (i,grp) ->
-                i, [| for k in 0 .. (keys - 1) -> grp |> Seq.filter (fun (a,b) -> b = k) |> Seq.length |])
-            |> Seq.toArray
-        let gain = condent featurized - initial
+
+        let featurized = binnize splits keys filtered
+        let gain = initial - condent featurized
+
         if (gain > 0.)
         then Some(splits, gain)
         else None

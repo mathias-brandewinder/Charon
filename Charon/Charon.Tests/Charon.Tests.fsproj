@@ -41,7 +41,9 @@
   <ItemGroup>
     <Compile Include="Entropy.fs" />
     <Compile Include="Index.fs" />
+    <Compile Include="Continuous.fs" />
     <Compile Include="DecisionTree.fs" />
+    <Compile Include="Experimental.fs" />
     <None Include="app.config" />
     <None Include="packages.config" />
   </ItemGroup>

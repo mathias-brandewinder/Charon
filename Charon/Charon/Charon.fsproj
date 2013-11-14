@@ -44,10 +44,12 @@
     <Compile Include="Entropy.fs" />
     <Compile Include="Index.fs" />
     <Compile Include="Continuous.fs" />
+    <Compile Include="Tree.fs" />
     <Compile Include="DecisionTree.fs" />
     <None Include="DecisionTree.fsx" />
     <None Include="Continuous.fsx" />
     <None Include="HybridTree.fsx" />
+    <None Include="Tree.fsx" />
   </ItemGroup>
   <PropertyGroup>
     <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>

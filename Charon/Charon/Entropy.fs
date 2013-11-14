@@ -23,7 +23,7 @@ module Entropy =
         let rightS = sum right |> float
         let totalS = leftS + rightS
         h total - h left * (leftS/totalS) - h right * (rightS/totalS)
-
+    
 /// Minimum Description Length partitioning
 module MDL =
     
