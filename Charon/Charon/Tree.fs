@@ -6,7 +6,7 @@ module Tree =
     open Charon.MDL
     open Charon.Continuous
     
-    type Dataset = int * int [] * (float*int) [][] // classes, outcomes, features: only continuous for now
+    type Dataset = int * int [] * (float option * int) [][] // classes, outcomes, features: only continuous for now
 
     let selectFeature (dataset: Dataset) // full dataset
                       (filter: Filter) // indexes of observations in use

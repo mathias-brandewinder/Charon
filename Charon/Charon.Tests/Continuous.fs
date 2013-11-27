@@ -12,16 +12,16 @@ module ``Continuous Tests`` =
     let ``Validate splitValue`` () =
         let keys = 2
         let feature = [|
-            (0.,0);
-            (0.,0);
-            (0.,0);
-            (0.,0);
-            (0.,0);
-            (1.,1);
-            (1.,1);
-            (1.,1);
-            (1.,1);
-            (1.,1); |]
+            (Some(0.),0);
+            (Some(0.),0);
+            (Some(0.),0);
+            (Some(0.),0);
+            (Some(0.),0);
+            (Some(1.),1);
+            (Some(1.),1);
+            (Some(1.),1);
+            (Some(1.),1);
+            (Some(1.),1); |]
         let index = [| 0 .. 9 |]
         let (splits,value) = splitValue keys feature index |> Option.get
         splits  |> should equal [ 1.]

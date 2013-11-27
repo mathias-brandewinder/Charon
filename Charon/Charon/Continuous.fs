@@ -36,16 +36,16 @@ module Continuous =
     let split c data =
         splitter c data [] |> List.sort
 
-    let prepare keys data =
+    let prepare keys (data:(float * int)seq) =
         let dict = Dictionary<float,Count>()
         let empty () = [| for i in 1 .. keys -> 0 |]
         let update (count:Count) value = 
             count.[value] <- count.[value] + 1
             count
         for (x,y) in data do
-            if dict.ContainsKey(x)
-            then dict.[x] <- update dict.[x] y
-            else dict.Add(x, update (empty ()) y)
+                if dict.ContainsKey(x)
+                then dict.[x] <- update dict.[x] y
+                else dict.Add(x, update (empty ()) y)
         dict |> Seq.map (fun kv -> kv.Key,kv.Value) |> Seq.sortBy fst |> Seq.toArray
 
     let indexOf splits value =
@@ -60,10 +60,13 @@ module Continuous =
 
     type Filter = int []
 
-    let subindex (data: (float*_)[]) (filter:Filter) splits =
+    let subindex (data: (float option * _)[]) (filter:Filter) splits =
         let keys = List.length splits
         let map = seq { for k in 0 .. keys -> k, [||] } |> Map.ofSeq // can probably make array
-        seq { for i in filter -> i, indexOf splits (data.[i] |> fst) }
+        seq { for i in filter do 
+                  match (data.[i] |> fst) with
+                  | None -> ignore ()
+                  | Some(v) -> yield i, indexOf splits v }
         |> Seq.groupBy snd
         |> Seq.map (fun (x,grp) -> x, grp |> Seq.map fst |> Seq.toArray)
         |> Seq.fold (fun map (k,v) -> Map.add k v map) map
@@ -71,6 +74,13 @@ module Continuous =
     let filterBy (feature: _ []) (filter:Filter) =
         filter |> Array.map (fun i -> feature.[i])
 
+    let removeMissing (data:(float option * _) seq) =
+        seq {   
+            for (x,y) in data do
+                match x with
+                | None -> ignore ()
+                | Some(v) -> yield v,y } 
+            
     let condent (data: int[][]) =
         let size = 
             data 
@@ -88,9 +98,11 @@ module Continuous =
             bins.[indexOf splits value].[key] <- bins.[indexOf splits value].[key] + 1
         bins
 
-    let splitValue keys feature filter =
+    let splitValue keys (feature:(float option*int)[]) filter =
         let filtered = 
             filterBy feature filter
+            |> Array.filter (fun (x,y) -> (x |> Option.isNone))
+            |> Array.map (fun (x,y) -> Option.get x, y)
             |> Array.sortBy fst
         let splits = split keys (prepare keys filtered)
         let initial = 

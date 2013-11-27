@@ -43,3 +43,10 @@ let filter = [| 1; 2; 3; 8; 9; |]
 let sp = [ 0.5; 1.0 ]
 
 let test = subindex dataset filter sp
+
+let t = [ (Some(0.5),1); (None,1); ]
+t |> List.choose (fun (x,y) -> x)
+
+//let chooseBy f xs =
+//    xs |> Seq.filter (fun x -> (f x) |> 
+    
