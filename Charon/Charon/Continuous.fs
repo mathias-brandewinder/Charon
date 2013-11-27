@@ -101,7 +101,7 @@ module Continuous =
     let splitValue keys (feature:(float option*int)[]) filter =
         let filtered = 
             filterBy feature filter
-            |> Array.filter (fun (x,y) -> (x |> Option.isNone))
+            |> Array.filter (fun (x,y) -> (x |> Option.isSome))
             |> Array.map (fun (x,y) -> Option.get x, y)
             |> Array.sortBy fst
         let splits = split keys (prepare keys filtered)

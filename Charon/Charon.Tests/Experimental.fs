@@ -1,19 +1,20 @@
 ﻿namespace Charon.Tests
 
-module ``Experimental`` =
+open System
+open NUnit.Framework
+open FsUnit
 
-    open System
-    open NUnit.Framework
-    open FsUnit
+open Charon.Entropy
+open Charon.MDL
+open Charon.Tree
 
-    open Charon.Entropy
-    open Charon.MDL
-    open Charon.Tree
+[<TestFixture>]
+type ``Experimental`` () =
 
     [<Test>]
-    let ``try out continuous tree`` () =
+    member test.``try out continuous tree`` () =
 
-        let size = 1000
+        let size = 10000
         let classes = 3
 
         let rng = Random()
