@@ -6,16 +6,25 @@ module Tree =
     open Charon.MDL
     open Charon.Continuous
     
-    type Dataset = { Classes:int; Outcomes:int []; Features: (float option * int) [][] } // classes, outcomes, features: only continuous for now
+    type Feature =
+        | Numeric of (float option * int) []
+        | Categorical of Map<int, index>
+
+    type Dataset = { Classes:int; Outcomes:int []; Features: Feature [] } // classes, outcomes, features: only continuous for now
+
+    let tempSplitValue classes feature filter =
+        match feature with
+        | Numeric(x) -> splitValue classes x filter 
+        | Categorical(x) -> failwith "Not implemented yet" // TODO FIX THIS
 
     let selectFeature (dataset: Dataset) // full dataset
                       (filter: Filter) // indexes of observations in use
                       (remaining: int Set) = // indexes of features usable 
         
         let classes, outcomes, features = dataset.Classes, dataset.Outcomes, dataset.Features
-        
+
         let candidates = 
-            seq { for f in remaining -> f, splitValue classes (features.[f]) filter }
+            seq { for f in remaining -> f, tempSplitValue classes (features.[f]) filter }
             |> Seq.filter (fun (i,f) -> Option.isSome f)
             |> Seq.map (fun (i,f) -> i, Option.get f)
         if (Seq.isEmpty candidates)
@@ -62,7 +71,10 @@ module Tree =
             | Some(index, (splits,_)) -> 
                 let remaining = remaining |> Set.remove index
                 let feature = features.[index]
-                let indexes = subindex feature filter splits
-                let likely = filter |> filterBy outcomes |> mostLikely
-                let branch = { FeatIndex = index; Default = likely; Splits = splits }
-                Branch(Num(branch, [| for i in indexes -> growTree dataset (i.Value) remaining featureSelector minLeaf |]))
+                match feature with
+                | Numeric(feature) ->
+                    let indexes = subindex feature filter splits
+                    let likely = filter |> filterBy outcomes |> mostLikely
+                    let branch = { FeatIndex = index; Default = likely; Splits = splits }
+                    Branch(Num(branch, [| for i in indexes -> growTree dataset (i.Value) remaining featureSelector minLeaf |]))
+                | Categorical(x) -> failwith "TO DO"
