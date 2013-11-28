@@ -6,13 +6,13 @@ module Tree =
     open Charon.MDL
     open Charon.Continuous
     
-    type Dataset = int * int [] * (float option * int) [][] // classes, outcomes, features: only continuous for now
+    type Dataset = { Classes:int; Outcomes:int []; Features: (float option * int) [][] } // classes, outcomes, features: only continuous for now
 
     let selectFeature (dataset: Dataset) // full dataset
                       (filter: Filter) // indexes of observations in use
                       (remaining: int Set) = // indexes of features usable 
         
-        let classes, outcomes, features = dataset
+        let classes, outcomes, features = dataset.Classes, dataset.Outcomes, dataset.Features
         
         let candidates = 
             seq { for f in remaining -> f, splitValue classes (features.[f]) filter }
@@ -31,9 +31,12 @@ module Tree =
         |> Seq.maxBy snd 
         |> fst
 
+    type NumBranch = { FeatIndex: int; Default: int; Splits:float list; }
+    type CatBranch = { FeatIndex: int; Default: int; }
+
     type BranchType =
-//        | Cat of int * int * Tree [] // feature, default, rest
-        | Num of int * int * float list * Tree [] // feature, default, cuts, rest
+        | Cat of CatBranch * Tree [] // feature, default, rest
+        | Num of NumBranch * Tree [] // feature, default, cuts, rest
     and Tree =
         | Leaf of int
         | Branch of BranchType
@@ -44,7 +47,7 @@ module Tree =
                      (featureSelector: int Set -> int Set)
                      (minLeaf: int) = // min elements in a leaf   
         
-        let classes, outcomes, features = dataset
+        let classes, outcomes, features = dataset.Classes, dataset.Outcomes, dataset.Features
                    
         if (remaining = Set.empty) then              
             Leaf(filter |> filterBy outcomes |> mostLikely)
@@ -61,4 +64,5 @@ module Tree =
                 let feature = features.[index]
                 let indexes = subindex feature filter splits
                 let likely = filter |> filterBy outcomes |> mostLikely
-                Branch(Num(index, likely, splits, [| for i in indexes -> growTree dataset (i.Value) remaining featureSelector minLeaf |]))
+                let branch = { FeatIndex = index; Default = likely; Splits = splits }
+                Branch(Num(branch, [| for i in indexes -> growTree dataset (i.Value) remaining featureSelector minLeaf |]))

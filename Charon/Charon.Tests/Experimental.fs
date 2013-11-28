@@ -26,7 +26,7 @@ type ``Experimental`` () =
                 yield outcomes |> Array.map (fun x -> (if x = 2 then Some(rng.NextDouble()) else Some(rng.NextDouble() + 1.)), x);
                 yield outcomes |> Array.map (fun x -> Some(rng.NextDouble()), x); |]
 
-        let dataset = classes, outcomes, features
+        let dataset = { Classes = classes; Outcomes = outcomes; Features = features }
         let filter = [| 0 .. (size - 1) |]
         let remaining = [0;1;2] |> Set.ofList
         let selector = id
