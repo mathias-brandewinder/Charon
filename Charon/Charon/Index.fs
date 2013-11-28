@@ -26,7 +26,7 @@ module Index =
         Seq.unfold (fun (i,j) -> 
             if (i >= l1) then
                 if (j >= l2) then None 
-                else Some(ar2.[j], (i, j + 1)) 
+                else Some(ar2.[j], (i, j + 1)) // can probably speed that part up
             elif (j >= l2) then Some(ar1.[i], (i+1, j))
             else
                 if ar1.[i] < ar2.[j] then Some(ar1.[i], (i+1, j))
