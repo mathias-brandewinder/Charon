@@ -6,7 +6,8 @@ module Tree =
     open Charon.Entropy
     open Charon.MDL
     open Charon.Continuous
-    
+    open Charon.Discrete
+
     type Feature =
         | Numeric of (float option * int) []
         | Categorical of Map<int, index>
@@ -17,11 +18,10 @@ module Tree =
         | NumericSplit of float list * float // feat index, splits, conditional entropy
         | CategorySplit of float // feat index, conditional entropy
         
-    let tempSplitValue classes feature filter =
+    let tempSplitValue classes outcomes feature filter =
         match feature with
-        | Numeric(x) -> 
-            NumericSplit(splitValue classes x filter)
-        | Categorical(x) -> failwith "Not implemented yet" // TODO FIX THIS
+        | Numeric(x) -> NumericSplit(splitValue classes x filter)
+        | Categorical(x) -> CategorySplit(conditionalEntropy2 x filter outcomes) 
 
     let selectFeature (dataset: Dataset) // full dataset
                       (filter: Filter) // indexes of observations in use
@@ -29,7 +29,7 @@ module Tree =
         
         let classes, outcomes, features = dataset.Classes, dataset.Outcomes, dataset.Features
 
-        let labels = outcomes |> filterBy filter
+        let labels = outcomes |> Continuous.filterBy filter
         let initialEntropy =
             labels 
             |> Seq.countBy id
@@ -38,10 +38,13 @@ module Tree =
             |> h
 
         let candidates = 
-            seq { for f in remaining -> f, tempSplitValue classes (features.[f]) filter }
+            seq { for f in remaining -> f, tempSplitValue classes outcomes (features.[f]) filter }
             |> Seq.filter (fun (i,splitType) -> 
                 match splitType with
-                | NumericSplit(splits, value) -> initialEntropy - value > 0.
+                | NumericSplit(splits, value) -> 
+                    match splits with
+                    | [] -> false
+                    | _  -> initialEntropy - value > 0.
                 | CategorySplit(value) -> initialEntropy - value > 0.)
 
         if (Seq.isEmpty candidates)
@@ -79,15 +82,15 @@ module Tree =
         let classes, outcomes, features = dataset.Classes, dataset.Outcomes, dataset.Features
                    
         if (remaining = Set.empty) then              
-            Leaf(filter |> filterBy outcomes |> mostLikely)
+            Leaf(filter |> Continuous.filterBy outcomes |> mostLikely)
         elif (Array.length filter < minLeaf) then
-            Leaf(filter |> filterBy outcomes |> mostLikely)
+            Leaf(filter |> Continuous.filterBy outcomes |> mostLikely)
         else
             let candidates = featureSelector remaining
             let best = selectFeature dataset filter candidates
 
             match best with
-            | None -> Leaf(filter |> filterBy outcomes |> mostLikely)
+            | None -> Leaf(filter |> Continuous.filterBy outcomes |> mostLikely)
             | Some(index,splitType) ->
                 let remaining = remaining |> Set.remove index
                 let feature = features.[index]
@@ -96,11 +99,24 @@ module Tree =
                     match feature with
                     | Numeric(feature) ->
                         let indexes = subindex feature filter splits
-                        let likely = filter |> filterBy outcomes |> mostLikely
+                        let likely = filter |> Continuous.filterBy outcomes |> mostLikely
                         let branch = { FeatIndex = index; Default = likely; Splits = splits }
-                        Branch(Num(branch, [| for i in indexes -> growTree dataset (i.Value) remaining featureSelector minLeaf |]))
+                        Branch(Num(branch,  [| 
+                                                for i in indexes -> 
+                                                    if Array.length (i.Value) < minLeaf then Leaf(likely)
+                                                    else growTree dataset (i.Value) remaining featureSelector minLeaf 
+                                            |]))
                     | Categorical(x) -> failwith "Feature mismatch"
                 | CategorySplit(value) -> 
                     match feature with
-                    | Categorical(x) -> failwith "TO DO"                    
+                    | Categorical(x) -> 
+                        let feature = x
+                        let splits = filterBy filter feature
+                        let likely = splits |> Discrete.mostLikely
+                        let branch = { FeatIndex = index; Default = likely }
+                        Branch(Cat(branch, [| 
+                                              for i in splits -> 
+                                                  if Array.length (i.Value) < minLeaf then Leaf(likely)
+                                                  else growTree dataset (i.Value) remaining featureSelector minLeaf 
+                                           |]))
                     | Numeric(feature) -> failwith "Feature mismatch"

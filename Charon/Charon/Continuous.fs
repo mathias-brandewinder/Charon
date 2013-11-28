@@ -4,6 +4,7 @@ module Continuous =
 
     open System
     open System.Collections.Generic
+    open Charon
     open Charon.Entropy
     open Charon.MDL              
 
@@ -57,8 +58,6 @@ module Continuous =
                 then index
                 else walk tl (index+1)
         walk (splits |> List.sort) 0
-
-    type Filter = int []
 
     let subindex (data: (float option * _)[]) (filter:Filter) splits =
         let keys = List.length splits

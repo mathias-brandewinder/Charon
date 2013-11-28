@@ -5,6 +5,7 @@ module DecisionTree =
     open Charon
     open System
     open System.Collections.Generic
+    open Charon.Discrete
 
     // A feature maps the outcomes, encoded as integers,
     // to sorted observation indexes in the dataset.
@@ -30,37 +31,6 @@ module DecisionTree =
     | Leaf of int // decision
     | CatBranch of int * int * Map<int, Tree> // feature index, default choice, & sub-trees by outcome
 
-    let private h (category: int) (total: int) = 
-        if total = 0 then 0. // is this right? failwith "At least one observation is needed."
-        elif category = 0 then 0.
-        else
-            let p = (float)category / (float)total
-            - p * log p
-
-    // Total elements in a feature.
-    let private total (f: Feature) = 
-        f 
-        |> Map.toSeq 
-        |> Seq.sumBy (fun (x, y) -> Index.length y)
-    
-    // Entropy of a feature.
-    let entropy (f: Feature) =
-        let size = total f
-        f 
-        |> Map.toSeq 
-        |> Seq.sumBy (fun (x,y) -> h (Index.length y) size)
-
-    // Apply a filter to a Feature, retaining
-    // only the elements whose index are in the filter set.
-    let filterBy (filter: int []) (feature: Feature) =
-        feature
-        |> Map.map (fun value indexes -> Index.intersect indexes filter)
-
-    // Retrieve all indexes covered by feature
-    let indexesOf (feature: Feature) =
-        feature 
-        |> Map.fold (fun indexes k kIndexes -> Index.merge indexes kIndexes) [||]
-
     // Split labels based on the values of a feature
     let split (feature: Feature) (labels: Feature) =
         feature 
@@ -68,15 +38,6 @@ module DecisionTree =
                labels 
                |> Map.map (fun l labelIndexes -> 
                       Index.intersect labelIndexes indexes))
-
-    // Conditional Entropy when splitting labels by feature
-    let conditionalEntropy (feature: Feature) (labels: Feature) =
-        let size = total feature
-        split feature labels
-        |> Map.map (fun v feature -> 
-               (float)(total feature) * entropy (labels |> filterBy (indexesOf feature)) / (float)size)
-        |> Map.toSeq
-        |> Seq.sumBy snd
     
     // Given a filter on indexes and remaining features,
     // pick the feature that yields highest information gain
