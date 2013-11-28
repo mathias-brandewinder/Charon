@@ -2,6 +2,7 @@
 
 module Tree = 
 
+    open Charon
     open Charon.Entropy
     open Charon.MDL
     open Charon.Continuous
@@ -12,26 +13,45 @@ module Tree =
 
     type Dataset = { Classes:int; Outcomes:int []; Features: Feature [] } // classes, outcomes, features: only continuous for now
 
+    type SplitType =
+        | NumericSplit of float list * float // feat index, splits, conditional entropy
+        | CategorySplit of float // feat index, conditional entropy
+        
     let tempSplitValue classes feature filter =
         match feature with
-        | Numeric(x) -> splitValue classes x filter 
+        | Numeric(x) -> 
+            NumericSplit(splitValue classes x filter)
         | Categorical(x) -> failwith "Not implemented yet" // TODO FIX THIS
 
     let selectFeature (dataset: Dataset) // full dataset
                       (filter: Filter) // indexes of observations in use
-                      (remaining: int Set) = // indexes of features usable 
+                      (remaining: int Set) = // indexes of usable features 
         
         let classes, outcomes, features = dataset.Classes, dataset.Outcomes, dataset.Features
 
+        let labels = outcomes |> filterBy filter
+        let initialEntropy =
+            labels 
+            |> Seq.countBy id
+            |> Seq.map snd
+            |> Seq.toArray
+            |> h
+
         let candidates = 
             seq { for f in remaining -> f, tempSplitValue classes (features.[f]) filter }
-            |> Seq.filter (fun (i,f) -> Option.isSome f)
-            |> Seq.map (fun (i,f) -> i, Option.get f)
+            |> Seq.filter (fun (i,splitType) -> 
+                match splitType with
+                | NumericSplit(splits, value) -> initialEntropy - value > 0.
+                | CategorySplit(value) -> initialEntropy - value > 0.)
+
         if (Seq.isEmpty candidates)
         then None
         else 
             candidates 
-            |> Seq.maxBy (fun (i, (splits,value)) -> value) 
+            |> Seq.maxBy (fun (i, splitType) ->
+                match splitType with
+                | NumericSplit(splits, value) -> initialEntropy - value > 0.
+                | CategorySplit(value) -> initialEntropy - value > 0.)
             |> Some
 
     let mostLikely (outcomes: int []) = 
@@ -68,13 +88,19 @@ module Tree =
 
             match best with
             | None -> Leaf(filter |> filterBy outcomes |> mostLikely)
-            | Some(index, (splits,_)) -> 
+            | Some(index,splitType) ->
                 let remaining = remaining |> Set.remove index
                 let feature = features.[index]
-                match feature with
-                | Numeric(feature) ->
-                    let indexes = subindex feature filter splits
-                    let likely = filter |> filterBy outcomes |> mostLikely
-                    let branch = { FeatIndex = index; Default = likely; Splits = splits }
-                    Branch(Num(branch, [| for i in indexes -> growTree dataset (i.Value) remaining featureSelector minLeaf |]))
-                | Categorical(x) -> failwith "TO DO"
+                match splitType with
+                | NumericSplit(splits, value) -> 
+                    match feature with
+                    | Numeric(feature) ->
+                        let indexes = subindex feature filter splits
+                        let likely = filter |> filterBy outcomes |> mostLikely
+                        let branch = { FeatIndex = index; Default = likely; Splits = splits }
+                        Branch(Num(branch, [| for i in indexes -> growTree dataset (i.Value) remaining featureSelector minLeaf |]))
+                    | Categorical(x) -> failwith "Feature mismatch"
+                | CategorySplit(value) -> 
+                    match feature with
+                    | Categorical(x) -> failwith "TO DO"                    
+                    | Numeric(feature) -> failwith "Feature mismatch"

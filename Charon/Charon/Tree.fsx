@@ -6,9 +6,9 @@
 open System
 open Charon.Tree
 
-let size = 50000
-let classes = 10
-let fs = 20
+let size = 10000
+let classes = 3
+
 let rng = Random()
 
 let outcomes = [| for i in 1 .. size -> rng.Next(classes) |]
@@ -20,7 +20,7 @@ let features =
 
 let dataset = { Classes = classes; Outcomes = outcomes; Features = features }
 let filter = [| 0 .. (size - 1) |]
-let remaining = [0..(fs-1)] |> Set.ofList
+let remaining = [ 0; 1; 2 ] |> Set.ofList
 let selector = id
 
 #time

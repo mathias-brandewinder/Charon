@@ -44,6 +44,7 @@
   <ItemGroup>
     <Compile Include="Entropy.fs" />
     <Compile Include="Index.fs" />
+    <Compile Include="Discrete.fs" />
     <Compile Include="Continuous.fs" />
     <Compile Include="Tree.fs" />
     <Compile Include="DecisionTree.fs" />

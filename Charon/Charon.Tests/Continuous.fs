@@ -7,6 +7,7 @@ module ``Continuous Tests`` =
 
     open Charon
     open Charon.Continuous
+    open Entropy
 
     [<Test>]
     let ``Validate splitValue`` () =
@@ -23,5 +24,13 @@ module ``Continuous Tests`` =
             (Some(1.),1);
             (Some(1.),1); |]
         let index = [| 0 .. 9 |]
-        let (splits,value) = splitValue keys feature index |> Option.get
+        let initial = 
+            feature 
+            |> Seq.map snd           
+            |> Seq.countBy id
+            |> Seq.map snd
+            |> Seq.toArray
+            |> h
+
+        let (splits,value) = splitValue keys feature index 
         splits  |> should equal [ 1.]

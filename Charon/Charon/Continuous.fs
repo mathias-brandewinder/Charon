@@ -105,16 +105,12 @@ module Continuous =
             |> Array.map (fun (x,y) -> Option.get x, y)
             |> Array.sortBy fst
         let splits = split keys (prepare keys filtered)
-        let initial = 
-            filtered 
-            |> Seq.countBy (fun  (x,y) -> y)
-            |> Seq.map snd
-            |> Seq.toArray
-            |> h
+//        let initial = 
+//            filtered 
+//            |> Seq.countBy (fun  (x,y) -> y)
+//            |> Seq.map snd
+//            |> Seq.toArray
+//            |> h
 
         let featurized = binnize splits keys filtered
-        let gain = initial - condent featurized
-
-        if (gain > 0.)
-        then Some(splits, gain)
-        else None
+        splits, condent featurized
