@@ -52,14 +52,14 @@ module DecisionTree =
 
     // Apply a filter to a Feature, retaining
     // only the elements whose index are in the filter set.
-    let filterBy (filter: int list) (feature: Feature) =
+    let filterBy (filter: int []) (feature: Feature) =
         feature
         |> Map.map (fun value indexes -> Index.intersect indexes filter)
 
     // Retrieve all indexes covered by feature
     let indexesOf (feature: Feature) =
         feature 
-        |> Map.fold (fun indexes k kIndexes -> Index.merge indexes kIndexes) []
+        |> Map.fold (fun indexes k kIndexes -> Index.merge indexes kIndexes) [||]
 
     // Split labels based on the values of a feature
     let split (feature: Feature) (labels: Feature) =
@@ -156,17 +156,18 @@ module DecisionTree =
 
     // Data preparation functions ******************************
 
+    // TODO FIX THIS Array.append has to have terrible perf
     // prepare an array of observed values into a Feature.
     let prepare (obs: int seq) =
         let dict = Dictionary<int, index>()
         obs
         |> Seq.fold (fun i value ->
                 if dict.ContainsKey(value)
-                then dict.[value] <- i::dict.[value]
-                else dict.Add(value, [i])
+                then dict.[value] <- Array.append dict.[value] [|i|]
+                else dict.Add(value, [|i|])
                 (i + 1)) 0
         |> ignore
-        dict |> Seq.map (fun kv -> kv.Key, List.rev kv.Value) |> Map.ofSeq
+        dict |> Seq.map (fun kv -> kv.Key, kv.Value) |> Map.ofSeq
 
     // From a sequence of observations, for a feature,
     // construct a Map of existing values to integers (indexes),
@@ -192,10 +193,10 @@ module DecisionTree =
                 else 0
         map, extractor
 
-    let private append (dict: Dictionary<int, int list>) (value:int) (index:int) =
+    let private append (dict: Dictionary<int, int []>) (value:int) (index:int) =
         if dict.ContainsKey(value)
-        then dict.[value] <- index::dict.[value]
-        else dict.Add(value, [index])
+        then dict.[value] <- Array.append dict.[value] [|index|]
+        else dict.Add(value, [|index|])
 
     let private prepareLabels (labels: string option []) =
         let labelsMap, labelizer = labels |> extract id
@@ -247,8 +248,8 @@ module DecisionTree =
             append labels label i
             features |> Array.iteri (fun j f -> append f feats.[j] i))
 
-        labels |> Seq.map (fun kv -> kv.Key, List.rev kv.Value) |> Map.ofSeq,
-        [| for feat in features -> feat |> Seq.map (fun kv -> kv.Key, List.rev kv.Value) |> Map.ofSeq |]
+        labels |> Seq.map (fun kv -> kv.Key, kv.Value) |> Map.ofSeq,
+        [| for feat in features -> feat |> Seq.map (fun kv -> kv.Key, kv.Value) |> Map.ofSeq |]
 
     // Tree visualization functions ******************************
 
@@ -328,7 +329,7 @@ module DecisionTree =
         
         let trainingSet = prepareTraining examples (Array.length fs) labelizer featurizer
 
-        let classifier, tree = ID3Classifier trainingSet [ 0.. (examples |> Array.length) - 1 ] (config.MinimumLeafSize)
+        let classifier, tree = ID3Classifier trainingSet [| 0.. (examples |> Array.length) - 1 |] (config.MinimumLeafSize)
         
         featurizer >> classifier >> predicted,
         match (config.DetailLevel) with
@@ -347,7 +348,7 @@ module DecisionTree =
     let bag (p: float) (rng: Random) (from: index) =
         let size = Index.length from
         let bagSize = ((float)size * p) |> (int)
-        [ for i in 1 .. bagSize -> rng.Next(0, size) ] |> List.sort
+        [| for i in 1 .. bagSize -> rng.Next(0, size) |] |> Array.sort
 
     // grow a tree, picking a random subset of the features at each node
     let private randomTree (dataset: TrainingSet) // full dataset
@@ -422,7 +423,7 @@ module DecisionTree =
             | None -> Random()
             | Some(x) -> x
 
-        let forest = growForest trainingSet [ 0.. (examples |> Array.length) - 1 ] config.MinimumLeafSize config.BaggingProportion config.Iterations rng
+        let forest = growForest trainingSet [| 0.. (examples |> Array.length) - 1 |] config.MinimumLeafSize config.BaggingProportion config.Iterations rng
         
         let classifier obs = (forestDecide forest obs featurizer predicted)
         classifier,

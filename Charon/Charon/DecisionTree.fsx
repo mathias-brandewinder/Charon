@@ -17,7 +17,7 @@ let test (size: int) (feat: int) (outcomes: int) =
 
     let dataset = labels, data
 
-    let indexes = [ 0 .. size ]
+    let indexes = [| 0 .. size |]
     let features = [ 0 .. (feat - 1) ] |> Set.ofList
     let minLeaf = 5
 

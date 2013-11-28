@@ -1,42 +1,34 @@
 ﻿namespace Charon
 
-type index = int list
+type index = int []
 
 [<RequireQualifiedAccess>]
 module Index =
 
-    let length (a: index) = List.length a
+    let length (a: index) = Array.length a
 
-    let (empty: index) = []
+    let (empty: index) = [||]
 
-    let rec private inter (curr: index) (a: index) (b: index) =
-        match a with
-        | [] -> curr
-        | hda::tla ->
-            match b with
-            | [] -> curr
-            | hdb::tlb ->
-                if hda = hdb then inter (hda::curr) tla tlb
-                elif hda < hdb then inter curr tla b
-                else inter curr a tlb
-
-    // Computes the intersection of 2 indices
-    let intersect (a: index) (b: index) =
-        inter [] a b |> List.rev
-
-    let rec private mer (curr: index) (a: index) (b: index) =
-        match a with
-        | [] -> 
-            match b with
-            | [] -> curr
-            | hd::tl -> mer (hd::curr) a tl
-        | hda::tla ->
-              match b with
-              | [] -> mer (hda::curr) tla b
-              | hdb::tlb ->
-                    if hda < hdb then mer (hda::curr) tla b
-                    else mer (hdb::curr) a tlb
-    
-    // Merges 2 indices 
-    let merge (a: index) (b: index) =
-        mer [] a b |> List.rev
+    let intersect (ar1:int[]) (ar2:int[]) = 
+        Seq.unfold (fun (i,j) -> 
+            if (i >= Array.length ar1) then None 
+            elif (j >= Array.length ar2) then None
+            else
+                if ar1.[i] = ar2.[j] then Some(Some(ar1.[i]), (i+1, j+1))
+                elif ar1.[i] < ar2.[j] then Some(None, (i+1,j))
+                else Some(None, (i,j+1))) (0,0)
+        |> Seq.choose id
+        |> Seq.toArray
+          
+    let merge (ar1:int[]) (ar2:int[]) =
+        let l1 = Array.length ar1
+        let l2 = Array.length ar2
+        Seq.unfold (fun (i,j) -> 
+            if (i >= l1) then
+                if (j >= l2) then None 
+                else Some(ar2.[j], (i, j + 1)) 
+            elif (j >= l2) then Some(ar1.[i], (i+1, j))
+            else
+                if ar1.[i] < ar2.[j] then Some(ar1.[i], (i+1, j))
+                else Some(ar2.[j], (i, j+1))) (0,0)
+        |> Seq.toArray
