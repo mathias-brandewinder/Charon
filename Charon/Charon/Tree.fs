@@ -60,5 +60,5 @@ module Tree =
                 let remaining = remaining |> Set.remove index
                 let feature = features.[index]
                 let indexes = subindex feature filter splits
-                let likely = 0 // FIX THIS : what to pick when missing value?
+                let likely = filter |> filterBy outcomes |> mostLikely
                 Branch(Num(index, likely, splits, [| for i in indexes -> growTree dataset (i.Value) remaining featureSelector minLeaf |]))
