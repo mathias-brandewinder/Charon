@@ -8,9 +8,13 @@ module Tree =
     open Charon.Continuous
     open Charon.Discrete
 
+    type Value =
+        | Int   of int option
+        | Float of float option
+
     type Feature =
         | Numeric of (float option * int) []
-        | Categorical of Map<int, index>
+        | Categorical of Map<int, index> // TODO: possibly change representation
 
     type Dataset = { Classes:int; Outcomes:int []; Features: Feature [] } // classes, outcomes, features: only continuous for now
 

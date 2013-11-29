@@ -39,6 +39,7 @@ module Discrete =
     let indexesOf (feature: Feature) =
         feature 
         |> Map.fold (fun indexes k kIndexes -> Index.merge indexes kIndexes) [||]
+
     // Split labels based on the values of a feature
     let split (feature: Feature) (labels: Feature) =
         feature 

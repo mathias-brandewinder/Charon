@@ -1,5 +1,47 @@
 ﻿namespace Charon
 
+module ID3 =
+
+    open System
+    open System.Collections.Generic
+    open Charon
+    open Charon.Discrete
+    open Charon.Tree
+
+    let rec decide (tree: Tree) (obs: Value []) =
+        match tree with
+        | Leaf(outcome) -> outcome
+        | Branch(branchType) ->
+            match branchType with
+            | Cat(desc, trees) ->
+                let value = obs.[desc.FeatIndex]
+                match value with
+                | Int(v) ->
+                    match v with
+                    | None -> decide trees.[desc.Default] obs
+                    | Some(i) -> decide trees.[i] obs
+                | Float(_) -> failwith "Feature mismatch"         
+            | Num(desc, trees) ->
+                let value = obs.[desc.FeatIndex]
+                match value with
+                | Float(v) ->          
+                    match v with
+                    | None -> decide trees.[desc.Default] obs
+                    | Some(f) ->
+                        let i = Continuous.indexOf desc.Splits f 
+                        decide trees.[i] obs
+                | Int(v) -> failwith "Feature mismatch"
+
+    let inline any x = id x
+    
+    let ID3Classifier (dataset: Dataset) // full dataset
+                      (filter: index) // indexes of sample examples
+                      (minLeaf: int) = // min elements in a leaf  
+        let fs = Array.length dataset.Features
+        let remaining = Set.ofList [ 0 .. (fs - 1) ]
+        let tree = growTree dataset filter remaining any minLeaf
+        (decide tree, tree)
+
 module DecisionTree =
 
     open Charon
@@ -10,8 +52,10 @@ module DecisionTree =
     // A feature maps the outcomes, encoded as integers,
     // to sorted observation indexes in the dataset.
     type Feature = Map<int, index>
+
     // Training Set = Labels and Features
     type TrainingSet = Feature * Feature []
+
     // Output detail level
     type DetailLevel = Minimal | Verbose
 
@@ -23,97 +67,27 @@ module DecisionTree =
         then None
         else Some(text)
 
-    // A tree is either 
-    // a Leaf (a final conclusion has been reached), or
-    // a Branch (depending on the outcome on a feature,
-    // more investigation is needed).
-    type Tree = 
-    | Leaf of int // decision
-    | CatBranch of int * int * Map<int, Tree> // feature index, default choice, & sub-trees by outcome
-
-    // Split labels based on the values of a feature
-    let split (feature: Feature) (labels: Feature) =
-        feature 
-        |> Map.map (fun v indexes ->
-               labels 
-               |> Map.map (fun l labelIndexes -> 
-                      Index.intersect labelIndexes indexes))
-    
-    // Given a filter on indexes and remaining features,
-    // pick the feature that yields highest information gain
-    // to split the tree on.             
-    let selectFeature (dataset: TrainingSet) // full dataset
-                      (filter: index) // indexes of observations in use
-                      (remaining: int Set) = // indexes of features usable 
-        let labels = fst dataset |> filterBy filter
-        let initialEntropy = entropy labels
-        
-        let best =            
-            remaining
-            |> Seq.map (fun f -> f, (snd dataset).[f] |> filterBy filter)
-            |> Seq.map (fun (index, feat) -> 
-                initialEntropy - conditionalEntropy feat labels, (index, feat))
-            |> Seq.maxBy fst
-        if (fst best > 0.) then Some(snd best) else None
-
-    // Most likely outcome of a feature
-    let private mostLikely (f: Feature) =
-        f 
-        |> Map.toSeq 
-        |> Seq.maxBy (fun (i, s) -> Index.length s) 
-        |> fst
-
-    // Recursively build a decision tree,
-    // selecting out of the remaining features
-    // which ones yields the largest entropy gain
-    let rec growTree (dataset: TrainingSet) // full dataset
-                     (filter: index) // indexes of observations in use
-                     (remaining: int Set) // indexes of features usable
-                     (featureSelector: int Set -> int Set)
-                     (minLeaf: int) = // min elements in a leaf   
-                   
-        if (remaining = Set.empty) then 
-            Leaf(fst dataset |> filterBy filter |> mostLikely)
-        elif (Index.length filter < minLeaf) then
-            Leaf(fst dataset |> filterBy filter |> mostLikely)
-        else
-            let candidates = featureSelector remaining
-            let best = selectFeature dataset filter candidates
-
-            match best with
-            | None -> Leaf(fst dataset |> filterBy filter |> mostLikely)
-            | Some(best) -> 
-                let (index, feature) = best
-                let remaining = remaining |> Set.remove index
-                let splits = filterBy filter feature
-                let likely = splits |> mostLikely // what to pick when missing value?
-                CatBranch(index, likely,
-                    splits
-                    |> Map.map (fun v indices ->
-                           let tree = growTree dataset indices remaining featureSelector minLeaf
-                           tree))
-
-    // Recursively walk down the tree,
-    // to figure out how an observation
-    // should be classified         
-    let rec decide (tree: Tree) (obs: int []) =
-        match tree with
-        | Leaf(outcome) -> outcome
-        | CatBranch(feature, mostLikely, next) ->
-              let value = obs.[feature]
-              if Map.containsKey value next
-              then decide next.[value] obs
-              else decide next.[mostLikely] obs
-    
-    let inline any x = id x
-    
-    let ID3Classifier (dataset: TrainingSet) // full dataset
-                      (filter: index) // indexes of sample examples
-                      (minLeaf: int) = // min elements in a leaf  
-        let fs = snd dataset |> Array.length
-        let remaining = Set.ofList [ 0 .. (fs - 1) ]
-        let tree = growTree dataset filter remaining any minLeaf
-        decide tree, tree
+//    // Recursively walk down the tree,
+//    // to figure out how an observation
+//    // should be classified         
+//    let rec decide (tree: Tree) (obs: int []) =
+//        match tree with
+//        | Leaf(outcome) -> outcome
+//        | CatBranch(feature, mostLikely, next) ->
+//              let value = obs.[feature]
+//              if Map.containsKey value next
+//              then decide next.[value] obs
+//              else decide next.[mostLikely] obs
+//    
+//    let inline any x = id x
+//    
+//    let ID3Classifier (dataset: TrainingSet) // full dataset
+//                      (filter: index) // indexes of sample examples
+//                      (minLeaf: int) = // min elements in a leaf  
+//        let fs = snd dataset |> Array.length
+//        let remaining = Set.ofList [ 0 .. (fs - 1) ]
+//        let tree = growTree dataset filter remaining any minLeaf
+//        decide tree, tree
 
     // Data preparation functions ******************************
 
@@ -212,182 +186,182 @@ module DecisionTree =
         labels |> Seq.map (fun kv -> kv.Key, kv.Value) |> Map.ofSeq,
         [| for feat in features -> feat |> Seq.map (fun kv -> kv.Key, kv.Value) |> Map.ofSeq |]
 
-    // Tree visualization functions ******************************
-
-    // Tree rendering utility: renders "pipes"
-    // for active branches
-    let private pad (actives: int Set) (depth: int) =
-        String.Join("", 
-            [|  for i in 0 .. (depth - 1) do 
-                    if (actives.Contains i) 
-                    then yield "│   " 
-                    else yield "   " |])
-
-    // renders a decision tree
-    let rec private plot (tree: Tree) 
-                         (actives: int Set) 
-                         (depth: int) 
-                         (predictor: int -> string)
-                         (reverseFeatures: (string * Map<int,string>)[]) =
-        seq {
-            match tree with
-            | Leaf(x) -> yield sprintf "%s -> %s" (pad actives depth) (predictor x)
-            | CatBranch(f,d,next) ->        
-                let last = next |> Map.toArray |> Array.length
-                let (fName, fMap) = reverseFeatures.[f]
-                let next' =
-                    next 
-                    |> Map.toArray
-                    |> Array.mapi (fun i (x, n) -> (i, x, n))
-                for (i, x, n) in next' do
-                    let actives' = 
-                        if (i = (last - 1)) 
-                        then Set.remove depth actives 
-                        else actives
-                    let pipe = 
-                        if (i = (last - 1)) 
-                        then "└" else "├"
-                    match n with
-                    | Leaf(z) -> 
-                        yield sprintf "%s%s %s = %s → %s" (pad actives depth) pipe fName (fMap.[x]) (predictor z)
-                    | CatBranch(_) -> 
-                        yield sprintf "%s%s %s = %s" (pad actives' depth) pipe fName (fMap.[x]) 
-                        yield! plot n (Set.add (depth + 1) actives') (depth + 1) predictor reverseFeatures
-        }
-     
-    let pretty tree predictor reverseFeatures =
-        fun () ->
-            plot tree (Set.ofList [0]) 0 predictor reverseFeatures
-            |> Seq.iter (printfn "%s")
-
-    // Draw the entire tree
-    let render tree predictor reverseFeatures = 
-        plot tree (Set.ofList [0]) 0 predictor reverseFeatures
-
-
-    type ID3Config = {
-        MinimumLeafSize: int;
-        DetailLevel: DetailLevel }
-
-    let DefaultID3Config = { 
-        MinimumLeafSize = 5; 
-        DetailLevel = Minimal }
-
-    type ID3Report = {
-        Tree: Tree;
-        Pretty: unit -> unit }
-
-    // Create a full ID3 Classification Tree
-    let createID3Classifier (examples: (string option * 'a) []) 
-                            (fs: (string * ('a -> string option))[]) 
-                            (config: ID3Config) =
-        // Unwrap labels and observations
-        let labels, observations = Array.unzip examples
-        // Convert label to integer, and integer to label
-        let labelizer, predicted = prepareLabels labels
-        // Convert observation to integer array
-        let featurizer, reverseMap = prepareFeaturizer observations fs
-        
-        let trainingSet = prepareTraining examples (Array.length fs) labelizer featurizer
-
-        let classifier, tree = ID3Classifier trainingSet [| 0.. (examples |> Array.length) - 1 |] (config.MinimumLeafSize)
-        
-        featurizer >> classifier >> predicted,
-        match (config.DetailLevel) with
-        | Minimal -> None
-        | Verbose -> Some({ Tree = tree; Pretty = pretty tree predicted reverseMap })
-
-    // work in progress: Random Forest
-    
-    // Pick n distinct random indexes at most from a set;
-    // incorrect but good enough for now.
-    let pickN n (rng: Random) (from: int Set) =
-        let array = Set.toArray from 
-        seq { for i in 1 .. n -> array.[rng.Next(0, Array.length array)] } |> Set.ofSeq
-    
-    // pick a proportion p from original sample, with replacement
-    let bag (p: float) (rng: Random) (from: index) =
-        let size = Index.length from
-        let bagSize = ((float)size * p) |> (int)
-        [| for i in 1 .. bagSize -> rng.Next(0, size) |] |> Array.sort
-
-    // grow a tree, picking a random subset of the features at each node
-    let private randomTree (dataset: TrainingSet) // full dataset
-                           (filter: index) // indexes of observations in use
-                           (remaining: int Set) // indexes of features usable
-                           (minLeaf: int) // min elements in a leaf
-                           (rng: Random) = // random number generator to use    
-        let n = Set.count remaining |> (float) |> sqrt |> ceil |> (int)
-        growTree dataset filter remaining (pickN n rng) minLeaf
-
-    // grow a forest of random trees
-    let private growForest (dataset: TrainingSet) // full dataset
-                           (filter: index) // indexes of observations in use
-                           (minLeaf: int) // min elements in a leaf
-                           (bagging: float)
-                           (iters: int) 
-                           (rng: Random) =    
-        let fs = snd dataset |> Array.length
-        let remaining = Set.ofList [ 0 .. (fs - 1) ]
-        let n = sqrt (Set.count remaining |> (float)) |> (int)
-
-        [| for i in 1 .. iters -> 
-            let rng = Random(rng.Next())
-            let picker = pickN n rng
-            let bagger = bag bagging rng
-            (picker, bagger) |] 
-        |> Array.Parallel.map (fun (picker, bagger) -> growTree dataset (filter |> bagger) remaining picker minLeaf)
-
-    // decide based on forest majority decision
-    let private forestDecision (trees: Tree []) (obs: int []) =
-        trees 
-        |> Array.map (fun t -> decide t obs)
-        |> Seq.countBy id
-        |> Seq.maxBy snd
-        |> fst
-
-    let private forestDecide (trees: Tree []) (obs: 'a) (f: 'a -> int []) (l: int -> string) =
-        forestDecision trees (f obs) |> l
-
-    type RFConfig = {
-        MinimumLeafSize: int;
-        BaggingProportion: float;
-        Iterations: int;
-        RNG: Random option;
-        DetailLevel: DetailLevel }
-
-    let DefaultRFConfig = { 
-        MinimumLeafSize = 5;
-        BaggingProportion = 0.75;
-        Iterations = 20;
-        RNG = None;
-        DetailLevel = Minimal }
-
-    type RFReport = {
-        Report: string; }
-
-    // there is obvious duplication here with ID3, need to clean up
-    let createForestClassifier (examples: (string option * 'a) []) 
-                               (fs: (string * ('a -> string option))[])
-                               (config: RFConfig) =
-        // Unwrap labels and observations
-        let labels, observations = Array.unzip examples
-        // Convert label to integer, and integer to label
-        let labelizer, predicted = prepareLabels labels
-        // Convert observation to integer array
-        let featurizer, reverseMap = prepareFeaturizer observations fs
-        
-        let trainingSet = prepareTraining examples (Array.length fs) labelizer featurizer
-
-        let rng = 
-            match config.RNG with
-            | None -> Random()
-            | Some(x) -> x
-
-        let forest = growForest trainingSet [| 0.. (examples |> Array.length) - 1 |] config.MinimumLeafSize config.BaggingProportion config.Iterations rng
-        
-        let classifier obs = (forestDecide forest obs featurizer predicted)
-        classifier,
-        match (config.DetailLevel) with
-        | Minimal -> None
-        | Verbose -> Some({ Report = "Report" })
+//    // Tree visualization functions ******************************
+//
+//    // Tree rendering utility: renders "pipes"
+//    // for active branches
+//    let private pad (actives: int Set) (depth: int) =
+//        String.Join("", 
+//            [|  for i in 0 .. (depth - 1) do 
+//                    if (actives.Contains i) 
+//                    then yield "│   " 
+//                    else yield "   " |])
+//
+//    // renders a decision tree
+//    let rec private plot (tree: Tree) 
+//                         (actives: int Set) 
+//                         (depth: int) 
+//                         (predictor: int -> string)
+//                         (reverseFeatures: (string * Map<int,string>)[]) =
+//        seq {
+//            match tree with
+//            | Leaf(x) -> yield sprintf "%s -> %s" (pad actives depth) (predictor x)
+//            | CatBranch(f,d,next) ->        
+//                let last = next |> Map.toArray |> Array.length
+//                let (fName, fMap) = reverseFeatures.[f]
+//                let next' =
+//                    next 
+//                    |> Map.toArray
+//                    |> Array.mapi (fun i (x, n) -> (i, x, n))
+//                for (i, x, n) in next' do
+//                    let actives' = 
+//                        if (i = (last - 1)) 
+//                        then Set.remove depth actives 
+//                        else actives
+//                    let pipe = 
+//                        if (i = (last - 1)) 
+//                        then "└" else "├"
+//                    match n with
+//                    | Leaf(z) -> 
+//                        yield sprintf "%s%s %s = %s → %s" (pad actives depth) pipe fName (fMap.[x]) (predictor z)
+//                    | CatBranch(_) -> 
+//                        yield sprintf "%s%s %s = %s" (pad actives' depth) pipe fName (fMap.[x]) 
+//                        yield! plot n (Set.add (depth + 1) actives') (depth + 1) predictor reverseFeatures
+//        }
+//     
+//    let pretty tree predictor reverseFeatures =
+//        fun () ->
+//            plot tree (Set.ofList [0]) 0 predictor reverseFeatures
+//            |> Seq.iter (printfn "%s")
+//
+//    // Draw the entire tree
+//    let render tree predictor reverseFeatures = 
+//        plot tree (Set.ofList [0]) 0 predictor reverseFeatures
+//
+//
+//    type ID3Config = {
+//        MinimumLeafSize: int;
+//        DetailLevel: DetailLevel }
+//
+//    let DefaultID3Config = { 
+//        MinimumLeafSize = 5; 
+//        DetailLevel = Minimal }
+//
+//    type ID3Report = {
+//        Tree: Tree;
+//        Pretty: unit -> unit }
+//
+//    // Create a full ID3 Classification Tree
+//    let createID3Classifier (examples: (string option * 'a) []) 
+//                            (fs: (string * ('a -> string option))[]) 
+//                            (config: ID3Config) =
+//        // Unwrap labels and observations
+//        let labels, observations = Array.unzip examples
+//        // Convert label to integer, and integer to label
+//        let labelizer, predicted = prepareLabels labels
+//        // Convert observation to integer array
+//        let featurizer, reverseMap = prepareFeaturizer observations fs
+//        
+//        let trainingSet = prepareTraining examples (Array.length fs) labelizer featurizer
+//
+//        let classifier, tree = ID3Classifier trainingSet [| 0.. (examples |> Array.length) - 1 |] (config.MinimumLeafSize)
+//        
+//        featurizer >> classifier >> predicted,
+//        match (config.DetailLevel) with
+//        | Minimal -> None
+//        | Verbose -> Some({ Tree = tree; Pretty = pretty tree predicted reverseMap })
+//
+//    // work in progress: Random Forest
+//    
+//    // Pick n distinct random indexes at most from a set;
+//    // incorrect but good enough for now.
+//    let pickN n (rng: Random) (from: int Set) =
+//        let array = Set.toArray from 
+//        seq { for i in 1 .. n -> array.[rng.Next(0, Array.length array)] } |> Set.ofSeq
+//    
+//    // pick a proportion p from original sample, with replacement
+//    let bag (p: float) (rng: Random) (from: index) =
+//        let size = Index.length from
+//        let bagSize = ((float)size * p) |> (int)
+//        [| for i in 1 .. bagSize -> rng.Next(0, size) |] |> Array.sort
+//
+//    // grow a tree, picking a random subset of the features at each node
+//    let private randomTree (dataset: TrainingSet) // full dataset
+//                           (filter: index) // indexes of observations in use
+//                           (remaining: int Set) // indexes of features usable
+//                           (minLeaf: int) // min elements in a leaf
+//                           (rng: Random) = // random number generator to use    
+//        let n = Set.count remaining |> (float) |> sqrt |> ceil |> (int)
+//        growTree dataset filter remaining (pickN n rng) minLeaf
+//
+//    // grow a forest of random trees
+//    let private growForest (dataset: TrainingSet) // full dataset
+//                           (filter: index) // indexes of observations in use
+//                           (minLeaf: int) // min elements in a leaf
+//                           (bagging: float)
+//                           (iters: int) 
+//                           (rng: Random) =    
+//        let fs = snd dataset |> Array.length
+//        let remaining = Set.ofList [ 0 .. (fs - 1) ]
+//        let n = sqrt (Set.count remaining |> (float)) |> (int)
+//
+//        [| for i in 1 .. iters -> 
+//            let rng = Random(rng.Next())
+//            let picker = pickN n rng
+//            let bagger = bag bagging rng
+//            (picker, bagger) |] 
+//        |> Array.Parallel.map (fun (picker, bagger) -> growTree dataset (filter |> bagger) remaining picker minLeaf)
+//
+//    // decide based on forest majority decision
+//    let private forestDecision (trees: Tree []) (obs: int []) =
+//        trees 
+//        |> Array.map (fun t -> decide t obs)
+//        |> Seq.countBy id
+//        |> Seq.maxBy snd
+//        |> fst
+//
+//    let private forestDecide (trees: Tree []) (obs: 'a) (f: 'a -> int []) (l: int -> string) =
+//        forestDecision trees (f obs) |> l
+//
+//    type RFConfig = {
+//        MinimumLeafSize: int;
+//        BaggingProportion: float;
+//        Iterations: int;
+//        RNG: Random option;
+//        DetailLevel: DetailLevel }
+//
+//    let DefaultRFConfig = { 
+//        MinimumLeafSize = 5;
+//        BaggingProportion = 0.75;
+//        Iterations = 20;
+//        RNG = None;
+//        DetailLevel = Minimal }
+//
+//    type RFReport = {
+//        Report: string; }
+//
+//    // there is obvious duplication here with ID3, need to clean up
+//    let createForestClassifier (examples: (string option * 'a) []) 
+//                               (fs: (string * ('a -> string option))[])
+//                               (config: RFConfig) =
+//        // Unwrap labels and observations
+//        let labels, observations = Array.unzip examples
+//        // Convert label to integer, and integer to label
+//        let labelizer, predicted = prepareLabels labels
+//        // Convert observation to integer array
+//        let featurizer, reverseMap = prepareFeaturizer observations fs
+//        
+//        let trainingSet = prepareTraining examples (Array.length fs) labelizer featurizer
+//
+//        let rng = 
+//            match config.RNG with
+//            | None -> Random()
+//            | Some(x) -> x
+//
+//        let forest = growForest trainingSet [| 0.. (examples |> Array.length) - 1 |] config.MinimumLeafSize config.BaggingProportion config.Iterations rng
+//        
+//        let classifier obs = (forestDecide forest obs featurizer predicted)
+//        classifier,
+//        match (config.DetailLevel) with
+//        | Minimal -> None
+//        | Verbose -> Some({ Report = "Report" })
