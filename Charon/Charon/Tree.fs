@@ -35,11 +35,7 @@ module Tree =
 
         let labels = outcomes |> Continuous.filterBy filter
         let initialEntropy =
-            labels 
-            |> Seq.countBy id
-            |> Seq.map snd
-            |> Seq.toArray
-            |> h
+            labels |> countFrom |> h
 
         let candidates = 
             seq { for f in remaining -> f, tempSplitValue classes outcomes (features.[f]) filter }

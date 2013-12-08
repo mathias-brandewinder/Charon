@@ -2,6 +2,8 @@
 
 module Entropy =
 
+    open System.Collections.Generic
+
     type Count = int []
 
     let add (count1:Count) count2 = (count1, count2) ||> Array.map2 (fun x y -> x + y)
@@ -24,6 +26,17 @@ module Entropy =
         let totalS = leftS + rightS
         h total - h left * (leftS/totalS) - h right * (rightS/totalS)
     
+    let countFrom (data: 'a seq) =
+        let update (acc:Dictionary<'a,int>) x =
+            if acc.ContainsKey x
+            then acc.[x] <- acc.[x] + 1
+            else acc.Add(x,1)
+            acc
+        let dict = Dictionary<'a,int>()         
+        Seq.fold (fun acc x -> update acc x) dict data
+        |> fun d -> d.Keys
+        |> Seq.toArray
+
 /// Minimum Description Length partitioning
 module MDL =
     
