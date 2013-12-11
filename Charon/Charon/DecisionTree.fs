@@ -8,30 +8,6 @@ module ID3 =
     open Charon.Discrete
     open Charon.Tree
 
-    let rec decide (tree: Tree) (obs: Value []) =
-        match tree with
-        | Leaf(outcome) -> outcome
-        | Branch(branchType) ->
-            match branchType with
-            | Cat(desc, trees) ->
-                let value = obs.[desc.FeatIndex]
-                match value with
-                | Int(v) ->
-                    match v with
-                    | None -> decide trees.[desc.Default] obs
-                    | Some(i) -> decide trees.[i] obs
-                | Float(_) -> failwith "Feature mismatch"         
-            | Num(desc, trees) ->
-                let value = obs.[desc.FeatIndex]
-                match value with
-                | Float(v) ->          
-                    match v with
-                    | None -> decide trees.[desc.Default] obs
-                    | Some(f) ->
-                        let i = Continuous.indexOf desc.Splits f 
-                        decide trees.[i] obs
-                | Int(v) -> failwith "Feature mismatch"
-
     let inline any x = id x
     
     let ID3Classifier (dataset: Dataset) // full dataset

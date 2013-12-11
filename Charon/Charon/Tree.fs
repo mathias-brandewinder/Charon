@@ -16,11 +16,11 @@ module Tree =
         | Numeric of (float option * int) []
         | Categorical of Map<int, index> // TODO: possibly change representation
 
-    type Dataset = { Classes:int; Outcomes:int []; Features: Feature [] } // classes, outcomes, features: only continuous for now
+    type Dataset = { Classes:int; Outcomes:int []; Features: Feature [] }
 
     type SplitType =
-        | NumericSplit of float list * float // feat index, splits, conditional entropy
-        | CategorySplit of float // feat index, conditional entropy
+        | NumericSplit of float list * float // splits, conditional entropy
+        | CategorySplit of float // conditional entropy
         
     let tempSplitValue classes outcomes feature filter =
         match feature with
@@ -67,8 +67,8 @@ module Tree =
     type CatBranch = { FeatIndex: int; Default: int; }
 
     type BranchType =
-        | Cat of CatBranch * Tree [] // feature, default, rest
-        | Num of NumBranch * Tree [] // feature, default, cuts, rest
+        | Cat of CatBranch * Tree []
+        | Num of NumBranch * Tree []
     and Tree =
         | Leaf of int
         | Branch of BranchType
@@ -120,3 +120,27 @@ module Tree =
                                                   else growTree dataset (i.Value) remaining featureSelector minLeaf 
                                            |]))
                     | Numeric(feature) -> failwith "Feature mismatch"
+
+    let rec decide (tree: Tree) (obs: Value []) =
+        match tree with
+        | Leaf(outcome) -> outcome
+        | Branch(branchType) ->
+            match branchType with
+            | Cat(desc, trees) ->
+                let value = obs.[desc.FeatIndex]
+                match value with
+                | Int(v) ->
+                    match v with
+                    | None -> decide trees.[desc.Default] obs
+                    | Some(i) -> decide trees.[i] obs
+                | Float(_) -> failwith "Feature mismatch"         
+            | Num(desc, trees) ->
+                let value = obs.[desc.FeatIndex]
+                match value with
+                | Float(v) ->          
+                    match v with
+                    | None -> decide trees.[desc.Default] obs
+                    | Some(f) ->
+                        let i = Continuous.indexOf desc.Splits f 
+                        decide trees.[i] obs
+                | Int(v) -> failwith "Feature mismatch"

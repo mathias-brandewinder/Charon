@@ -47,6 +47,7 @@
     <Compile Include="Discrete.fs" />
     <Compile Include="Continuous.fs" />
     <Compile Include="Tree.fs" />
+    <Compile Include="Extraction.fs" />
     <Compile Include="DecisionTree.fs" />
     <None Include="DecisionTree.fsx" />
     <None Include="Continuous.fsx" />
