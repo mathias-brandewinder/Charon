@@ -1,6 +1,9 @@
 ﻿#load "Featurization.fs"
+#load "Learning.fs"
+
 open Charon.Refactoring
 open Charon.Refactoring.Featurization
+open Charon.Refactoring.Learning
 
 type Obs = 
     { Int: int option; 
@@ -40,3 +43,19 @@ let emptySample =
 let f = extractor fs fsMap
 f sample
 f emptySample
+
+let data = [ 
+    { Int = Some(17); Float = Some(1.); String = Some("One"); RawFloat = 42.0; RawInt = 1; };
+    { Int = Some(17); Float = Some(1.); String = Some("One"); RawFloat = 42.0; RawInt = 0; };
+    { Int = Some(42); Float = Some(2.); String = Some("One"); RawFloat = 42.0; RawInt = 1; };
+    { Int = Some(42); Float = Some(3.); String = Some("One"); RawFloat = 42.0; RawInt = 0; };
+    { Int = Some(17); Float = Some(2.); String = Some("One"); RawFloat = 42.0; RawInt = 1; }; ]
+
+let labels = Discrete, fun (x:Obs) -> (x.RawInt |> Some |> Int)
+
+let features = [ 
+    Discrete, (fun (x:Obs) -> x.Int |> Int); 
+    Discrete, (fun (x:Obs) -> x.RawInt |> Some |> Int); 
+    Continuous, (fun (x:Obs) -> x.Float |> Float); ]
+
+let test = prepare data labels features

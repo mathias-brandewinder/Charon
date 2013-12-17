@@ -24,11 +24,15 @@ module Featurization =
 
     open System
 
+    type ValueType = 
+        | Discrete
+        | Continuous
+
     type Value =
         | Int   of int option
         | Float of float option
     
-    type Converter<'a> = 'a -> Value []
+    type Converter<'a> = ValueType * ('a -> Value)
 
     type Feature<'a> =
         | Cat of ('a -> string option)
