@@ -59,3 +59,6 @@ let features = [
     Continuous, (fun (x:Obs) -> x.Float |> Float); ]
 
 let test = prepare data labels features
+
+let map,extractor = createExtractor data fs
+data |> List.map extractor

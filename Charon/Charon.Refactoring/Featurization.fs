@@ -56,6 +56,35 @@ module Featurization =
                 else Int(None)
         | Num(g) -> g obs |> Float
 
+    type FeatureMap = 
+        { OutsideIn:Map<string,int>; 
+          InsideOut:Map<int,string> }
+
+    let createFeatureMap (data:'a seq) (f:Feature<'a>) = 
+        match f with
+        | Cat(g) -> 
+            let oneWay = 
+                data 
+                |> Seq.map g
+                |> Seq.distinct
+                |> Seq.choose id 
+                |> Seq.mapi (fun i k -> k,i) 
+                |> Map.ofSeq
+            let back = 
+                oneWay 
+                |> Map.toSeq 
+                |> Seq.map (fun (x,y) -> (y,x)) 
+                |> Map.ofSeq
+            { OutsideIn = oneWay; InsideOut = back }
+        | Num(_) -> { OutsideIn = Map.empty; InsideOut = Map.empty }
+
+    // Create a function that fully converts an observation
+    // into an array of Value (i.e. int or float)
     let extractor (fs:(string*Feature<'a>) list) (fsMap:Map<string,int> list) =        
         let combined = (fs,fsMap) ||> List.zip
         fun (obs:'a) -> combined |> List.map (fun ((_,f),map) -> convert f map obs)
+
+    let createExtractor (data:'a seq) (fs:(string*Feature<'a>) list) =
+        let map = fs |> List.map (fun (name,f) -> name, createFeatureMap data f)
+        let ext = extractor fs (map |> List.map snd |> List.map (fun x -> x.OutsideIn))
+        map,ext
