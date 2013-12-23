@@ -21,6 +21,8 @@ let fs =
       "Raw Float", (fun o -> o.RawFloat |> Some) |> Numerical;
       "Raw Int", (fun o -> o.RawInt |> Some) |> Categorical; ]
 
+let l = "Label", (fun (txt:string) -> Some(txt)) |> Categorical
+
 let data = [ 
     "A", { Int = Some(17); Float = Some(1.); String = Some("One"); RawFloat = 42.0; RawInt = 1; };
     "B", { Int = Some(17); Float = Some(1.); String = Some("Two"); RawFloat = 32.0; RawInt = 0; };
@@ -30,15 +32,21 @@ let data = [
 
 let labels = Discrete, fun (x:Obs) -> (x.RawInt |> Some |> Int)
 
+let labelizer =
+    Discrete, 
+    (fun txt -> 
+        if txt = "A" then Int(Some(0)) 
+        elif txt = "B" then Int(Some(1))
+        else Int(None))
+
 let featurizers = [ 
     Discrete, (fun (x:Obs) -> x.Int |> Int); 
     Discrete, (fun (x:Obs) -> x.RawInt |> Some |> Int); 
     Continuous, (fun (x:Obs) -> x.Float |> Float); ]
 
-let labelizer =
-    Discrete, (fun txt -> if txt = "A" then Int(Some(0)) else Int(Some(1)))
-
-let test = prepare data labelizer featurizers
+let transformers = translators data (l,fs)
+let test2 = prepare data transformers
+let test = prepare data (labelizer, featurizers)
 
 let map,extractor = createExtractor (data |> Seq.map snd) fs
 data |> List.map snd |> List.map extractor

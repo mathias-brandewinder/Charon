@@ -36,6 +36,25 @@ module Featurization =
                 else Int(None)
         | Num(g) -> g obs |> Float
 
+    let featureType (f:Feature<'a>) =
+        match f with
+        | Cat(_) -> Discrete
+        | Num(_) -> Continuous
+
+    let converter (f:Feature<'a>) (map: Map<string,int>) =
+        featureType f,
+        fun (obs:'a) ->
+            match f with
+            | Cat(g) -> 
+                let key = g obs
+                match key with
+                | None -> Int(None)
+                | Some(k) ->
+                    if map |> Map.containsKey k
+                    then Int(Some(map.[k]))
+                    else Int(None)
+            | Num(g) -> g obs |> Float
+
     type FeatureMap = 
         { OutsideIn:Map<string,int>; 
           InsideOut:Map<int,string> }

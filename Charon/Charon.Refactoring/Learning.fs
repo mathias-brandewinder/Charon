@@ -48,7 +48,23 @@ module Learning =
         |> Seq.map (fun obs -> feature obs |> discConv |> Option.get) 
         |> Seq.toArray
         
-    let prepare (data:('l*'a) seq) (labels:Converter<'l>) (features:Converter<'a> list) =
+    let translators (data:('l*'a) seq) (labels:(string*Feature<'l>), (features:(string*Feature<'a>) list)) = 
+        
+        let ls = data |> Seq.map fst
+        let obs = data |> Seq.map snd
+
+        let labelsMap = createFeatureMap ls (snd labels)
+        let labelizer = converter (snd labels) (labelsMap.OutsideIn)
+        
+        let featurizers = 
+            features
+            |> List.map (fun (n,f) -> 
+                let map = createFeatureMap obs f
+                converter f (map.OutsideIn))
+
+        labelizer, featurizers
+            
+    let prepare (data:('l*'a) seq) ((labels:Converter<'l>), (features:Converter<'a> list)) =
         
         let valueType,lblconverter = labels
 
