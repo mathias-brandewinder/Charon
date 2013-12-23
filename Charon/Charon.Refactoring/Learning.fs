@@ -2,13 +2,15 @@
 
 module Learning =
 
+    open Charon.Refactoring
     open Charon.Refactoring.Featurization
+    open Charon.Refactoring.Tree
 
     type Variable =
         | Disc of int [][] // outcome, and corresponding observation indexes
         | Cont of (float option*int option) [] // values, and label value
 
-    type Dataset = { Classes:int; Outcomes:int option []; Features: Variable [] }
+    type Dataset = { Classes:int; Outcomes:int []; Features: Variable [] }
 
     let discConv (x:Value) =
         match x with
@@ -20,9 +22,9 @@ module Learning =
         | Float(x) -> x
         | _        -> failwith "Not a float - Boom!"
 
-    let continuous (data:'a seq) (feature:'a -> Value) (label:'a -> Value) =
+    let continuous (data:('l*'a) seq) (feature:'a -> Value) (label:'l -> Value) =
         data
-        |> Seq.map (fun obs -> feature obs |> contConv, label obs |> discConv)
+        |> Seq.map (fun (lbl,obs) -> feature obs |> contConv, label lbl |> discConv)
         |> Seq.toArray
 
     let discrete (data:'a seq) (feature:'a -> Value) =
@@ -37,35 +39,65 @@ module Learning =
 
     let countClasses (data:'a seq) (feature:'a -> Value) =
         data
-        |> Seq.map (fun obs -> feature obs |> discConv)
+        |> Seq.map (fun obs -> feature obs |> discConv |> Option.get)
         |> Seq.distinct
-        |> Seq.choose id
         |> Seq.length
 
     let intlabels (data: 'a seq) (feature:'a -> Value) =
         data 
-        |> Seq.map (fun obs -> feature obs |> discConv) 
+        |> Seq.map (fun obs -> feature obs |> discConv |> Option.get) 
         |> Seq.toArray
         
-    let prepare (data:'a seq) (labels:Converter<'a>) (features:Converter<'a> list) =
+    let prepare (data:('l*'a) seq) (labels:Converter<'l>) (features:Converter<'a> list) =
         
-        // Should I filter out the labels that are None / missing?
-        // Useless for a tree, but interesting maybe as indication
-        // of how reliable the tree is?
         let valueType,lblconverter = labels
+
+        // Currently filtering out every observation that has no label.
+        // Might want to revisit later, in case missing labels can
+        // provide information on classifier reliability?
+        let haslabel (x:Value) =
+            match x with
+            | Int(v) -> v |> Option.isSome
+            | Float(v) -> v |> Option.isSome
+
+        let data = 
+            data 
+            |> Seq.filter (fun (lbl,obs) -> lblconverter lbl |> haslabel)
 
         let classes,labels = 
             match valueType with
             | Continuous -> failwith "Regression not implemented yet."
-            | Discrete   -> countClasses data lblconverter, intlabels data lblconverter
+            | Discrete   -> 
+                let ls = data |> Seq.map fst
+                countClasses ls lblconverter, intlabels ls lblconverter
 
-        let transforms = 
+        let transformed = 
+            let observations = data |> Seq.map snd
             features
             |> List.map (fun feat ->
                 let valueType, converter = feat
                 match valueType with
-                | Discrete   -> discrete data converter |> Disc
+                | Discrete   -> discrete observations converter |> Disc
                 | Continuous -> continuous data converter lblconverter |> Cont)
             |> List.toArray
 
-        { Classes = classes; Outcomes = labels; Features = transforms }
+        { Classes = classes; Outcomes = labels; Features = transformed }
+
+    type Settings = { MinLeaf:int; }
+
+    let filterBy (feature: _ []) (filter:filter) =
+        filter |> Array.map (fun i -> feature.[i])
+
+    let mostLikely (outcomes: _ []) = 
+        outcomes 
+        |> Seq.countBy id 
+        |> Seq.maxBy snd 
+        |> fst
+
+    let train (dataset:Dataset) (filter:filter) (remaining:int Set) (settings:Settings) =
+        if (remaining = Set.empty) then
+            Leaf(filter |> filterBy (dataset.Outcomes) |> mostLikely)
+        elif (Array.length filter < settings.MinLeaf) then
+            Leaf(filter |> filterBy (dataset.Outcomes) |> mostLikely)
+        else        
+            Leaf(filter |> filterBy (dataset.Outcomes) |> mostLikely)
