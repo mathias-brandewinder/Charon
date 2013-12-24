@@ -1,4 +1,6 @@
-﻿#load "Featurization.fs"
+﻿// Experimental script to develop / play with the API.
+
+#load "Featurization.fs"
 #load "Index.fs"
 #load "Tree.fs"
 #load "Learning.fs"
@@ -7,6 +9,7 @@ open Charon.Refactoring
 open Charon.Refactoring.Featurization
 open Charon.Refactoring.Learning
 
+// Our observations, with various types.
 type Obs = 
     { Int: int option; 
       Float: float option; 
@@ -14,39 +17,33 @@ type Obs =
       RawFloat: float;
       RawInt: int }
 
-let fs = 
+// The training set, a sequence of label, observation,
+// with some missing values added for good measure.
+let data = [ 
+    "A", { Int = Some(17); Float = None;     String = Some("One");   RawFloat = 42.0; RawInt = 1; };
+    "B", { Int = Some(17); Float = Some(1.); String = None;          RawFloat = 32.0; RawInt = 0; };
+    "A", { Int = Some(42); Float = Some(2.); String = Some("Three"); RawFloat = 42.0; RawInt = 1; };
+    "B", { Int = None;     Float = Some(3.); String = Some("One");   RawFloat = 22.0; RawInt = 0; };
+    "",  { Int = Some(42); Float = Some(3.); String = Some("One");   RawFloat = 22.0; RawInt = 0; };
+    "A", { Int = Some(17); Float = Some(2.); String = Some("Two");   RawFloat = 32.0; RawInt = 1; }; ]
+
+// Labels definition.
+let labels = "Label", (fun (txt:string) -> if txt = "" then None else Some(txt)) |> Categorical
+
+// Features definition, some Categorical (discrete states),
+// some Numerical (continuous values).
+let features = 
     [ "Integer", (fun o -> o.Int) |> Categorical; 
       "Float", (fun o -> o.Float) |> Numerical;
       "String", (fun o -> o.String) |> Categorical;
       "Raw Float", (fun o -> o.RawFloat |> Some) |> Numerical;
       "Raw Int", (fun o -> o.RawInt |> Some) |> Categorical; ]
 
-let l = "Label", (fun (txt:string) -> Some(txt)) |> Categorical
+// Prepare the Training Set into proper features.
+let transformers = translators data (labels,features)
+let test = prepare data transformers
 
-let data = [ 
-    "A", { Int = Some(17); Float = Some(1.); String = Some("One"); RawFloat = 42.0; RawInt = 1; };
-    "B", { Int = Some(17); Float = Some(1.); String = Some("Two"); RawFloat = 32.0; RawInt = 0; };
-    "A", { Int = Some(42); Float = Some(2.); String = Some("Three"); RawFloat = 42.0; RawInt = 1; };
-    "B", { Int = Some(42); Float = Some(3.); String = Some("One"); RawFloat = 22.0; RawInt = 0; };
-    "A", { Int = Some(17); Float = Some(2.); String = Some("Two"); RawFloat = 32.0; RawInt = 1; }; ]
-
-let labels = Discrete, fun (x:Obs) -> (x.RawInt |> Some |> Int)
-
-let labelizer =
-    Discrete, 
-    (fun txt -> 
-        if txt = "A" then Int(Some(0)) 
-        elif txt = "B" then Int(Some(1))
-        else Int(None))
-
-let featurizers = [ 
-    Discrete, (fun (x:Obs) -> x.Int |> Int); 
-    Discrete, (fun (x:Obs) -> x.RawInt |> Some |> Int); 
-    Continuous, (fun (x:Obs) -> x.Float |> Float); ]
-
-let transformers = translators data (l,fs)
-let test2 = prepare data transformers
-let test = prepare data (labelizer, featurizers)
-
-let map,extractor = createExtractor (data |> Seq.map snd) fs
+// Create an "extractor", mapping original observations
+// to the features used in the tree.
+let map,extractor = createExtractor (data |> Seq.map snd) features
 data |> List.map snd |> List.map extractor
