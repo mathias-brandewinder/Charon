@@ -102,8 +102,8 @@ module Learning =
 
         { Classes = classes; Outcomes = labels; Features = transformed }
 
-    let filterBy (feature: _ []) (filter:filter) =
-        filter |> Array.map (fun i -> feature.[i])
+    let applyFilter (filter:filter) (data: _ []) =
+        filter |> Array.map (fun i -> data.[i])
 
     let countCases (data:_ []) =
         data |> Seq.countBy id |> Seq.map snd |> Seq.toArray
@@ -114,32 +114,46 @@ module Learning =
         |> Seq.maxBy snd 
         |> fst
 
+    let arrayFilter (array:int[]) (filter:int[]) =
+        filter |> Array.filter (fun x -> array |> Array.exists (fun z -> z = x))
+
     // TODO FIX THIS: NEED TO FILTER!!!
     let filteredBy (filter:filter) (feature:Variable) =
         match feature with
-        | Disc(x) -> feature
+        | Disc(indexes) -> 
+            [| for i in indexes -> arrayFilter i filter |] |> Disc
         | Cont(x) -> feature
 
     // TODO: IMPLEMENT THIS!
     // Compute entropy and branch data
     // Could be done cleaner, with different data struct
     // for Disc and Cont (which requires splits). Later.
-    let bestSplit (feature:Variable) =
+    let conditional (data:int[][]) (labels:_[]) =
+        let total = data |> Array.sumBy (fun x -> Array.length x |> float)
+        data 
+        |> Seq.map (fun x -> seq { for i in x -> labels.[i] } |> countFrom)
+        |> Seq.map (fun x -> Array.sum x |> float, h x)
+        |> Seq.sumBy (fun (count,h) -> h * count / total)
+        
+    let bestSplit (feature:Variable) (labels:int[]) =
         match feature with
-        | Disc(x) -> 0., [] // returning empty splits list
+        | Disc(x) -> 
+            let c = conditional x labels
+            c, [] // returning empty splits list
         | Cont(x) -> 0., [1.;2.;3.]
         
+
 
     let selectFeature (dataset: Dataset) // full dataset
                       (filter: filter) // indexes of observations in use
                       (remaining: int Set) = // indexes of usable features 
         
-        let labels = dataset.Outcomes |> filterBy filter
+        let labels = dataset.Outcomes |> applyFilter filter
         let initialEntropy = labels |> countCases |> h
 
         let candidates = 
             seq { for i in remaining -> i, dataset.Features.[i] |> filteredBy filter }
-            |> Seq.map (fun (i,f) -> i,f, bestSplit f)
+            |> Seq.map (fun (i,f) -> i,f, bestSplit f (dataset.Outcomes))
             |> Seq.map (fun (i,f,(h,s)) -> (i,f,s,initialEntropy - h)) // replace h with gain
             |> Seq.filter (fun (_,_,_,g) -> g > 0.) // do I need to check splits non empty for continuous?
 
@@ -150,7 +164,7 @@ module Learning =
 
     let rec train (dataset:Dataset) (filter:filter) (remaining:int Set) (settings:Settings) =
 
-        let mostLikely () = filter |> filterBy (dataset.Outcomes) |> mostLikely
+        let mostLikely () = dataset.Outcomes |> applyFilter filter |> mostLikely
         
         if (remaining = Set.empty) then
             Leaf(mostLikely ())
@@ -159,16 +173,18 @@ module Learning =
         else
             let candidates = remaining
             let best = selectFeature dataset filter candidates
-            printfn "%A" best
+            
+            printfn "BEST: %A" best
+
             match best with
             | None -> Leaf(mostLikely ())
             | Some(i,f,s) -> // index, feature, splits, gain
                 let remaining = remaining |> Set.remove i
                 match f with
-                | Disc(_) ->
+                | Disc(indexes) ->
                     let branch = { FeatIndex = i; Default = mostLikely () }
-                    Leaf(mostLikely ()) // TEMPORARY
+                    Branch(Cat(branch, [| for filt in indexes -> train dataset filt remaining settings |]))
+//                    Leaf(mostLikely ()) // TEMPORARY
                 | Cont(_) ->
                     let branch = { NumBranch.FeatIndex = i; Default = mostLikely (); Splits = s }
                     Leaf(mostLikely ()) // TEMPORARY
-

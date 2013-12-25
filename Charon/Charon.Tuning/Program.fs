@@ -1,30 +1,45 @@
 ﻿open System
-open Charon.Entropy
-open Charon.MDL
-open Charon.Tree
+open Charon.Refactoring
+open Charon.Refactoring.Featurization
+open Charon.Refactoring.Learning
+type Obs = 
+    { Int: int option; 
+        Float: float option; 
+        String: string option;
+        RawFloat: float;
+        RawInt: int }
 
 [<EntryPoint>]
 let main argv = 
     printfn "Started"
 
-    let size = 100000
-    let classes = 3
+    // Our observations, with various types.
 
-    let rng = Random(42)
+    // The training set, a sequence of label, observation,
+    // with some missing values added for good measure.
+    let data = [ 
+        "A", { Int = Some(17); Float = None;     String = Some("One");   RawFloat = 42.0; RawInt = 1; };
+        "B", { Int = Some(17); Float = Some(1.); String = None;          RawFloat = 32.0; RawInt = 0; };
+        "A", { Int = Some(42); Float = Some(2.); String = Some("Three"); RawFloat = 42.0; RawInt = 1; };
+        "B", { Int = None;     Float = Some(3.); String = Some("One");   RawFloat = 22.0; RawInt = 0; };
+        "",  { Int = Some(42); Float = Some(3.); String = Some("One");   RawFloat = 22.0; RawInt = 0; };
+        "A", { Int = Some(17); Float = Some(2.); String = Some("Two");   RawFloat = 32.0; RawInt = 1; }; ]
 
-    let outcomes = [| for i in 1 .. size -> rng.Next(classes) |]
+    // Labels definition.
+    let labels = "Label", (fun (txt:string) -> if txt = "" then None else Some(txt)) |> Categorical
 
+    // Features definition, some Categorical (discrete states),
+    // some Numerical (continuous values).
     let features = 
-        [|  yield outcomes |> Array.map (fun x -> (if x = 0 then Some(rng.NextDouble()) else Some(rng.NextDouble() + 1.)), x) |> Numeric;
-            yield outcomes |> Array.map (fun x -> (if x = 2 then Some(rng.NextDouble()) else Some(rng.NextDouble() + 1.)), x) |> Numeric;
-            yield outcomes |> Array.map (fun x -> Some(rng.NextDouble()), x) |> Numeric;
-            yield outcomes |> Array.map (fun x -> if x = 0 then 0 else 1) |> Charon.Discrete.prepare |> Categorical; |]
+        [ "Integer", (fun o -> o.Int) |> Categorical; 
+          "Float", (fun o -> o.Float) |> Numerical;
+          "String", (fun o -> o.String) |> Categorical;
+          "Raw Float", (fun o -> o.RawFloat |> Some) |> Numerical;
+          "Raw Int", (fun o -> o.RawInt |> Some) |> Categorical; ]
 
-    let dataset = { Classes = classes; Outcomes = outcomes; Features = features }
-    let filter = [| 0 .. (size - 1) |]
-    let remaining = [ 0; 1; ] |> Set.ofList
-    let selector = id
+    // Prepare the Training Set into proper features.
+    let transformers = translators data (labels,features)
+    let trainingset = prepare data transformers
 
-    let tree = growTree dataset filter remaining selector 5
-
+    let tree = train trainingset [|0..4|] ([0..4] |> Set.ofList) { MinLeaf = 1 }
     0 // return an integer exit code
