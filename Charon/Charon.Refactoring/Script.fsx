@@ -3,6 +3,7 @@
 #load "Featurization.fs"
 #load "Index.fs"
 #load "Tree.fs"
+#load "Entropy.fs"
 #load "Learning.fs"
 
 open Charon.Refactoring
@@ -39,11 +40,13 @@ let features =
       "Raw Float", (fun o -> o.RawFloat |> Some) |> Numerical;
       "Raw Int", (fun o -> o.RawInt |> Some) |> Categorical; ]
 
-// Prepare the Training Set into proper features.
-let transformers = translators data (labels,features)
-let test = prepare data transformers
-
 // Create an "extractor", mapping original observations
 // to the features used in the tree.
 let map,extractor = createExtractor (data |> Seq.map snd) features
 data |> List.map snd |> List.map extractor
+
+// Prepare the Training Set into proper features.
+let transformers = translators data (labels,features)
+let trainingset = prepare data transformers
+
+let tree = train trainingset [|0..4|] ([0..4] |> Set.ofList) { MinLeaf = 1 }

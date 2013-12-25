@@ -3,6 +3,7 @@
 module Learning =
 
     open Charon.Refactoring
+    open Charon.Refactoring.Entropy
     open Charon.Refactoring.Featurization
     open Charon.Refactoring.Tree
 
@@ -11,6 +12,8 @@ module Learning =
         | Cont of (float option*int option) [] // values, and label value
 
     type Dataset = { Classes:int; Outcomes:int []; Features: Variable [] }
+    
+    type Settings = { MinLeaf:int; }
 
     let discConv (x:Value) =
         match x with
@@ -99,10 +102,11 @@ module Learning =
 
         { Classes = classes; Outcomes = labels; Features = transformed }
 
-    type Settings = { MinLeaf:int; }
-
     let filterBy (feature: _ []) (filter:filter) =
         filter |> Array.map (fun i -> feature.[i])
+
+    let countCases (data:_ []) =
+        data |> Seq.countBy id |> Seq.map snd |> Seq.toArray
 
     let mostLikely (outcomes: _ []) = 
         outcomes 
@@ -110,10 +114,61 @@ module Learning =
         |> Seq.maxBy snd 
         |> fst
 
-    let train (dataset:Dataset) (filter:filter) (remaining:int Set) (settings:Settings) =
+    // TODO FIX THIS: NEED TO FILTER!!!
+    let filteredBy (filter:filter) (feature:Variable) =
+        match feature with
+        | Disc(x) -> feature
+        | Cont(x) -> feature
+
+    // TODO: IMPLEMENT THIS!
+    // Compute entropy and branch data
+    // Could be done cleaner, with different data struct
+    // for Disc and Cont (which requires splits). Later.
+    let bestSplit (feature:Variable) =
+        match feature with
+        | Disc(x) -> 0., [] // returning empty splits list
+        | Cont(x) -> 0., [1.;2.;3.]
+        
+
+    let selectFeature (dataset: Dataset) // full dataset
+                      (filter: filter) // indexes of observations in use
+                      (remaining: int Set) = // indexes of usable features 
+        
+        let labels = dataset.Outcomes |> filterBy filter
+        let initialEntropy = labels |> countCases |> h
+
+        let candidates = 
+            seq { for i in remaining -> i, dataset.Features.[i] |> filteredBy filter }
+            |> Seq.map (fun (i,f) -> i,f, bestSplit f)
+            |> Seq.map (fun (i,f,(h,s)) -> (i,f,s,initialEntropy - h)) // replace h with gain
+            |> Seq.filter (fun (_,_,_,g) -> g > 0.) // do I need to check splits non empty for continuous?
+
+        if (Seq.isEmpty candidates) then None
+        else candidates |> Seq.maxBy (fun (_,_,_,g) -> g) |> fun (i,f,s,_) -> (i,f,s) |> Some
+
+
+
+    let rec train (dataset:Dataset) (filter:filter) (remaining:int Set) (settings:Settings) =
+
+        let mostLikely () = filter |> filterBy (dataset.Outcomes) |> mostLikely
+        
         if (remaining = Set.empty) then
-            Leaf(filter |> filterBy (dataset.Outcomes) |> mostLikely)
+            Leaf(mostLikely ())
         elif (Array.length filter < settings.MinLeaf) then
-            Leaf(filter |> filterBy (dataset.Outcomes) |> mostLikely)
-        else        
-            Leaf(filter |> filterBy (dataset.Outcomes) |> mostLikely)
+            Leaf(mostLikely ())
+        else
+            let candidates = remaining
+            let best = selectFeature dataset filter candidates
+            printfn "%A" best
+            match best with
+            | None -> Leaf(mostLikely ())
+            | Some(i,f,s) -> // index, feature, splits, gain
+                let remaining = remaining |> Set.remove i
+                match f with
+                | Disc(_) ->
+                    let branch = { FeatIndex = i; Default = mostLikely () }
+                    Leaf(mostLikely ()) // TEMPORARY
+                | Cont(_) ->
+                    let branch = { NumBranch.FeatIndex = i; Default = mostLikely (); Splits = s }
+                    Leaf(mostLikely ()) // TEMPORARY
+
