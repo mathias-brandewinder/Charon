@@ -20,6 +20,8 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Charon.Tuning", "Charon.Tun
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Charon.Refactoring", "Charon.Refactoring\Charon.Refactoring.fsproj", "{DD23F89A-C1D7-4622-B835-7340AB784957}"
 EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Charon.Refactoring.Examples", "Charon.Refactoring.Examples\Charon.Refactoring.Examples.fsproj", "{6F2031AD-B4D5-4F9B-BDE7-E448D95DB23E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -46,6 +48,10 @@ Global
 		{DD23F89A-C1D7-4622-B835-7340AB784957}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{DD23F89A-C1D7-4622-B835-7340AB784957}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{DD23F89A-C1D7-4622-B835-7340AB784957}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6F2031AD-B4D5-4F9B-BDE7-E448D95DB23E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6F2031AD-B4D5-4F9B-BDE7-E448D95DB23E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6F2031AD-B4D5-4F9B-BDE7-E448D95DB23E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6F2031AD-B4D5-4F9B-BDE7-E448D95DB23E}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

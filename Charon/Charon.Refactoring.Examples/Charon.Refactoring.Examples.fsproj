@@ -5,14 +5,13 @@
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <SchemaVersion>2.0</SchemaVersion>
-    <ProjectGuid>16983bb5-c798-4a6a-a6b1-a1fd656c731a</ProjectGuid>
-    <OutputType>Exe</OutputType>
-    <RootNamespace>Charon.Tuning</RootNamespace>
-    <AssemblyName>Charon.Tuning</AssemblyName>
+    <ProjectGuid>6f2031ad-b4d5-4f9b-bde7-e448d95db23e</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <RootNamespace>Charon.Refactoring.Examples</RootNamespace>
+    <AssemblyName>Charon.Refactoring.Examples</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
-    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <TargetFSharpCoreVersion>4.3.1.0</TargetFSharpCoreVersion>
-    <Name>Charon.Tuning</Name>
+    <Name>Charon.Refactoring.Examples</Name>
     <SolutionDir Condition="$(SolutionDir) == '' Or $(SolutionDir) == '*Undefined*'">..\</SolutionDir>
     <RestorePackages>true</RestorePackages>
   </PropertyGroup>
@@ -24,9 +23,7 @@
     <OutputPath>bin\Debug\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <WarningLevel>3</WarningLevel>
-    <PlatformTarget>AnyCPU</PlatformTarget>
-    <DocumentationFile>bin\Debug\Charon.Tuning.XML</DocumentationFile>
-    <Prefer32Bit>true</Prefer32Bit>
+    <DocumentationFile>bin\Debug\Charon.Refactoring.Examples.XML</DocumentationFile>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -35,9 +32,7 @@
     <OutputPath>bin\Release\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <WarningLevel>3</WarningLevel>
-    <PlatformTarget>AnyCPU</PlatformTarget>
-    <DocumentationFile>bin\Release\Charon.Tuning.XML</DocumentationFile>
-    <Prefer32Bit>true</Prefer32Bit>
+    <DocumentationFile>bin\Release\Charon.Refactoring.Examples.XML</DocumentationFile>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="FSharp.Data">
@@ -57,19 +52,13 @@
     <Reference Include="System.Numerics" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Program.fs" />
-    <None Include="App.config" />
+    <None Include="Script.fsx" />
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Charon.Refactoring\Charon.Refactoring.fsproj">
       <Name>Charon.Refactoring</Name>
       <Project>{dd23f89a-c1d7-4622-b835-7340ab784957}</Project>
-      <Private>True</Private>
-    </ProjectReference>
-    <ProjectReference Include="..\Charon\Charon.fsproj">
-      <Name>Charon</Name>
-      <Project>{8799c039-1225-4dee-b7ba-5298405585dd}</Project>
       <Private>True</Private>
     </ProjectReference>
   </ItemGroup>

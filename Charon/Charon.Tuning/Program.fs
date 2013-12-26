@@ -2,6 +2,8 @@
 open Charon.Refactoring
 open Charon.Refactoring.Featurization
 open Charon.Refactoring.Learning
+open FSharp.Data
+
 type Obs = 
     { Int: int option; 
         Float: float option; 
@@ -9,39 +11,79 @@ type Obs =
         RawFloat: float;
         RawInt: int }
 
+type DataSet = CsvProvider<"""C:\Users\Mathias\Documents\GitHub\Charon\Charon\Charon.Examples\titanic.csv""", 
+                           Schema="PassengerId=int, Pclass->Class, Parch->ParentsOrChildren, SibSp->SiblingsOrSpouse", 
+                           SafeMode=true, 
+                           PreferOptionals=true>
+
+type Passenger = DataSet.Row
+
+let titanicDemo () =
+
+    let labels = "Survived", (fun (obs:Passenger) -> obs.Survived) |> Categorical
+
+    let features = 
+        [ 
+          "Sex", (fun (o:Passenger) -> o.Sex) |> Categorical;
+          "Class", (fun (o:Passenger) -> o.Class) |> Categorical;
+          "Age", (fun (o:Passenger) -> o.Age) |> Numerical;
+          "Fare", (fun (o:Passenger) -> o.Fare) |> Numerical;
+        ]
+
+    let training = 
+        use data = new DataSet()
+        [| for passenger in data.Data -> 
+            passenger, // label source
+            passenger |] // features source
+            
+    let transformers = 
+        translators training (labels,features)
+
+    let trainingset = prepare training transformers
+
+    let tree = train trainingset [|0..800|] ([0..3] |> Set.ofList) { MinLeaf = 5 }
+    tree
+
+
 [<EntryPoint>]
 let main argv = 
     printfn "Started"
 
-    // Our observations, with various types.
+//    // Our observations, with various types.
+//
+//    // The training set, a sequence of label, observation,
+//    // with some missing values added for good measure.
+//    let data = [ 
+//        "A", { Int = Some(17); Float = Some(1.);  String = Some("One");   RawFloat = 42.0; RawInt = 1; };
+//        "B", { Int = Some(17); Float = Some(10.); String = None;          RawFloat = 32.0; RawInt = 0; };
+//        "A", { Int = Some(42); Float = Some(1.);  String = Some("Three"); RawFloat = 42.0; RawInt = 1; };
+//        "B", { Int = None;     Float = Some(10.); String = Some("One");   RawFloat = 22.0; RawInt = 0; };
+//        "",  { Int = Some(42); Float = Some(1.);  String = Some("One");   RawFloat = 22.0; RawInt = 0; };
+//        "B", { Int = Some(42); Float = Some(10.); String = Some("One");   RawFloat = 22.0; RawInt = 0; };
+//        "B", { Int = Some(42); Float = Some(10.); String = Some("One");   RawFloat = 22.0; RawInt = 0; };
+//        "A", { Int = Some(17); Float = Some(1.);  String = Some("Two");   RawFloat = 32.0; RawInt = 1; }; ]
+//
+//    // Labels definition.
+//    let labels = "Label", (fun (txt:string) -> if txt = "" then None else Some(txt)) |> Categorical
+//
+//    // Features definition, some Categorical (discrete states),
+//    // some Numerical (continuous values).
+//    let features = 
+//        [ "Integer", (fun o -> o.Int) |> Categorical; 
+//          "Float", (fun o -> o.Float) |> Numerical;
+//          "String", (fun o -> o.String) |> Categorical;
+//          "Raw Float", (fun o -> o.RawFloat |> Some) |> Numerical;
+//          "Raw Int", (fun o -> o.RawInt |> Some) |> Categorical; ]
+//
+//    // Prepare the Training Set into proper features.
+//    let transformers = translators data (labels,features)
+//    let trainingset = prepare data transformers
+//
+//    let tree = train trainingset [|0..6|] ([0..4] |> Set.ofList) { MinLeaf = 2 }
 
-    // The training set, a sequence of label, observation,
-    // with some missing values added for good measure.
-    let data = [ 
-        "A", { Int = Some(17); Float = Some(1.);  String = Some("One");   RawFloat = 42.0; RawInt = 1; };
-        "B", { Int = Some(17); Float = Some(10.); String = None;          RawFloat = 32.0; RawInt = 0; };
-        "A", { Int = Some(42); Float = Some(1.);  String = Some("Three"); RawFloat = 42.0; RawInt = 1; };
-        "B", { Int = None;     Float = Some(10.); String = Some("One");   RawFloat = 22.0; RawInt = 0; };
-        "",  { Int = Some(42); Float = Some(1.);  String = Some("One");   RawFloat = 22.0; RawInt = 0; };
-        "B", { Int = Some(42); Float = Some(10.); String = Some("One");   RawFloat = 22.0; RawInt = 0; };
-        "B", { Int = Some(42); Float = Some(10.); String = Some("One");   RawFloat = 22.0; RawInt = 0; };
-        "A", { Int = Some(17); Float = Some(1.);  String = Some("Two");   RawFloat = 32.0; RawInt = 1; }; ]
+    // TITANIC DEBUGGING / EXAMPLE
 
-    // Labels definition.
-    let labels = "Label", (fun (txt:string) -> if txt = "" then None else Some(txt)) |> Categorical
+    let tree = titanicDemo ()
 
-    // Features definition, some Categorical (discrete states),
-    // some Numerical (continuous values).
-    let features = 
-        [ "Integer", (fun o -> o.Int) |> Categorical; 
-          "Float", (fun o -> o.Float) |> Numerical;
-          "String", (fun o -> o.String) |> Categorical;
-          "Raw Float", (fun o -> o.RawFloat |> Some) |> Numerical;
-          "Raw Int", (fun o -> o.RawInt |> Some) |> Categorical; ]
 
-    // Prepare the Training Set into proper features.
-    let transformers = translators data (labels,features)
-    let trainingset = prepare data transformers
-
-    let tree = train trainingset [|0..6|] ([0..4] |> Set.ofList) { MinLeaf = 2 }
     0 // return an integer exit code

@@ -176,9 +176,13 @@ module Learning =
                                               if Array.length filt = 0 then Leaf(mostLikely ())
                                               else train dataset filt remaining settings 
                                        |]))
-                | Cont(x) ->
+                | Cont(_) ->
                     let branch = { NumBranch.FeatIndex = i; Default = mostLikely (); Splits = s }
-                    let filters = Continuous.subindex x filter s
+                    let feat = 
+                        match dataset.Features.[i] with
+                        | Cont(x) -> x
+                        | _ -> failwith "kaboom"
+                    let filters = Continuous.subindex feat filter s
                     Branch(Num(branch, [|
                                            for kv in filters ->
                                               let filt = kv.Value
