@@ -23,6 +23,8 @@ let main argv =
         "A", { Int = Some(42); Float = Some(2.); String = Some("Three"); RawFloat = 42.0; RawInt = 1; };
         "B", { Int = None;     Float = Some(3.); String = Some("One");   RawFloat = 22.0; RawInt = 0; };
         "",  { Int = Some(42); Float = Some(3.); String = Some("One");   RawFloat = 22.0; RawInt = 0; };
+        "B", { Int = Some(42); Float = Some(3.); String = Some("One");   RawFloat = 22.0; RawInt = 0; };
+        "B", { Int = Some(42); Float = Some(3.); String = Some("One");   RawFloat = 22.0; RawInt = 0; };
         "A", { Int = Some(17); Float = Some(2.); String = Some("Two");   RawFloat = 32.0; RawInt = 1; }; ]
 
     // Labels definition.
@@ -41,5 +43,5 @@ let main argv =
     let transformers = translators data (labels,features)
     let trainingset = prepare data transformers
 
-    let tree = train trainingset [|0..4|] ([0..4] |> Set.ofList) { MinLeaf = 1 }
+    let tree = train trainingset [|0..6|] ([0..4] |> Set.ofList) { MinLeaf = 2 }
     0 // return an integer exit code

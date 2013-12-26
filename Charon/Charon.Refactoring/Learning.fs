@@ -9,7 +9,7 @@ module Learning =
 
     type Variable =
         | Disc of int [][] // outcome, and corresponding observation indexes
-        | Cont of (float option*int option) [] // values, and label value
+        | Cont of (float option*int) [] // values, and label value
 
     type Dataset = { Classes:int; Outcomes:int []; Features: Variable [] }
     
@@ -27,7 +27,7 @@ module Learning =
 
     let continuous (data:('l*'a) seq) (feature:'a -> Value) (label:'l -> Value) =
         data
-        |> Seq.map (fun (lbl,obs) -> feature obs |> contConv, label lbl |> discConv)
+        |> Seq.map (fun (lbl,obs) -> feature obs |> contConv, label lbl |> discConv |> Option.get)
         |> Seq.toArray
 
     let discrete (data:'a seq) (feature:'a -> Value) =
@@ -117,12 +117,12 @@ module Learning =
     let arrayFilter (array:int[]) (filter:int[]) =
         filter |> Array.filter (fun x -> array |> Array.exists (fun z -> z = x))
 
-    // TODO FIX THIS: NEED TO FILTER!!!
     let filteredBy (filter:filter) (feature:Variable) =
         match feature with
         | Disc(indexes) -> 
             [| for i in indexes -> arrayFilter i filter |] |> Disc
-        | Cont(x) -> feature
+        | Cont(x) -> 
+            [| for i in filter -> x.[i] |] |> Cont
 
     // TODO: IMPLEMENT THIS!
     // Compute entropy and branch data
@@ -135,14 +135,11 @@ module Learning =
         |> Seq.map (fun x -> Array.sum x |> float, h x)
         |> Seq.sumBy (fun (count,h) -> h * count / total)
         
-    let bestSplit (feature:Variable) (labels:int[]) =
+    let bestSplit (feature:Variable) (labels:int[]) (classes:int) =
         match feature with
-        | Disc(x) -> 
-            let c = conditional x labels
-            c, [] // returning empty splits list
-        | Cont(x) -> 0., [1.;2.;3.]
+        | Disc(x) -> conditional x labels, []
+        | Cont(x) -> Continuous.analyze classes x 
         
-
 
     let selectFeature (dataset: Dataset) // full dataset
                       (filter: filter) // indexes of observations in use
@@ -153,9 +150,9 @@ module Learning =
 
         let candidates = 
             seq { for i in remaining -> i, dataset.Features.[i] |> filteredBy filter }
-            |> Seq.map (fun (i,f) -> i,f, bestSplit f (dataset.Outcomes))
+            |> Seq.map (fun (i,f) -> i,f, bestSplit f (dataset.Outcomes) (dataset.Classes))
             |> Seq.map (fun (i,f,(h,s)) -> (i,f,s,initialEntropy - h)) // replace h with gain
-            |> Seq.filter (fun (_,_,_,g) -> g > 0.) // do I need to check splits non empty for continuous?
+            |> Seq.filter (fun (_,_,_,g) -> g > 0.) 
 
         if (Seq.isEmpty candidates) then None
         else candidates |> Seq.maxBy (fun (_,_,_,g) -> g) |> fun (i,f,s,_) -> (i,f,s) |> Some
@@ -168,14 +165,12 @@ module Learning =
         
         if (remaining = Set.empty) then
             Leaf(mostLikely ())
-        elif (Array.length filter < settings.MinLeaf) then
+        elif (Array.length filter <= settings.MinLeaf) then
             Leaf(mostLikely ())
         else
             let candidates = remaining
             let best = selectFeature dataset filter candidates
             
-            printfn "BEST: %A" best
-
             match best with
             | None -> Leaf(mostLikely ())
             | Some(i,f,s) -> // index, feature, splits, gain
@@ -183,8 +178,11 @@ module Learning =
                 match f with
                 | Disc(indexes) ->
                     let branch = { FeatIndex = i; Default = mostLikely () }
-                    Branch(Cat(branch, [| for filt in indexes -> train dataset filt remaining settings |]))
-//                    Leaf(mostLikely ()) // TEMPORARY
+                    Branch(Cat(branch, [| 
+                                          for filt in indexes -> 
+                                              if Array.length filt = 0 then Leaf(mostLikely ())
+                                              else train dataset filt remaining settings 
+                                       |]))
                 | Cont(_) ->
                     let branch = { NumBranch.FeatIndex = i; Default = mostLikely (); Splits = s }
                     Leaf(mostLikely ()) // TEMPORARY

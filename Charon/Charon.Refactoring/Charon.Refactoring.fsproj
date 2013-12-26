@@ -53,6 +53,7 @@
     <Compile Include="Index.fs" />
     <Compile Include="Featurization.fs" />
     <Compile Include="Tree.fs" />
+    <Compile Include="Continuous.fs" />
     <Compile Include="Learning.fs" />
     <None Include="Script.fsx" />
   </ItemGroup>

@@ -4,6 +4,7 @@
 #load "Index.fs"
 #load "Tree.fs"
 #load "Entropy.fs"
+#load "Continuous.fs"
 #load "Learning.fs"
 
 open Charon.Refactoring
