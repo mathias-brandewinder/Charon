@@ -2,6 +2,7 @@
 #r @"..\packages\FSharp.Data.1.1.9\lib\net40\FSharp.Data.dll"
 
 open Charon.Refactoring
+open Charon.Refactoring.Tree
 open Charon.Refactoring.Featurization
 open Charon.Refactoring.Learning
 open System
@@ -34,12 +35,8 @@ let titanicDemo () =
         [| for passenger in data.Data -> 
             passenger, // label source
             passenger |] // features source
-            
-    let transformers = 
-        translators training (labels,features)
+                
+    let basicClassifier = basicTree training (labels,features)
 
-    let trainingset = prepare training transformers
-
-    let size = Array.length training
-    let tree = train trainingset [|0..size-1|] ([0..6] |> Set.ofList) { MinLeaf = 5 }
-    tree
+    training 
+    |> Seq.averageBy (fun (l,o) -> if (l.Survived |> Option.get |> fun x -> x.ToString()) = (basicClassifier o) then 1. else 0.)//printfn "%A -> %A" (l.Survived |> Option.get |> fun x -> x.ToString()) (basicClassifier o))

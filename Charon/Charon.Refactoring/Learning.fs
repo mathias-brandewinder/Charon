@@ -178,7 +178,7 @@ module Learning =
                                        |]))
                 | Cont(_) ->
                     let branch = { NumBranch.FeatIndex = i; Default = mostLikely (); Splits = s }
-                    let feat = 
+                    let feat = // this is ugly as hell
                         match dataset.Features.[i] with
                         | Cont(x) -> x
                         | _ -> failwith "kaboom"
@@ -189,3 +189,22 @@ module Learning =
                                               if Array.length filt = 0 then Leaf(mostLikely ())
                                               else train dataset filt remaining settings 
                                        |]))
+
+    let basicTree (data:('l*'a) seq) ((labels:string*Feature<'l>), (features:(string*Feature<'a>) list)) =
+
+        let fs = List.length features
+
+        let labelsMap = createFeatureMap (data |> Seq.map fst) (snd labels)
+        let predictionToLabel = labelsMap.InsideOut
+
+        let (labelizer,featurizers) = translators data (labels,features)
+        let trainingset = prepare data (labelizer,featurizers)
+        let xs = Array.length (trainingset.Outcomes)
+
+        let tree = train trainingset [|0..(xs-1)|] ([0..(fs-1)] |> Set.ofList) { MinLeaf = 5 }
+
+        let converter = 
+            let fs = featurizers |> List.unzip |> snd
+            fun (obs:'a) -> List.map (fun f -> f obs) fs |> List.toArray
+            
+        fun (obs:'a) -> labelsMap.InsideOut.[ decide tree (converter obs) ]

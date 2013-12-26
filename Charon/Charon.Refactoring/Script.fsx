@@ -10,6 +10,7 @@
 open Charon.Refactoring
 open Charon.Refactoring.Featurization
 open Charon.Refactoring.Learning
+open Charon.Refactoring.Tree
 
 // Our observations, with various types.
 type Obs = 
@@ -45,11 +46,12 @@ let features =
 
 // Create an "extractor", mapping original observations
 // to the features used in the tree.
-let map,extractor = createExtractor (data |> Seq.map snd) features
-data |> List.map snd |> List.map extractor
-
-// Prepare the Training Set into proper features.
-let transformers = translators data (labels,features)
-let trainingset = prepare data transformers
-
-let tree = train trainingset [|0..6|] ([0..4] |> Set.ofList) { MinLeaf = 1 }
+//let map,extractor = createExtractor (data |> Seq.map snd) features
+//data |> List.map snd |> List.map extractor
+//
+//// Prepare the Training Set into proper features.
+//let transformers = translators data (labels,features)
+//let trainingset = prepare data transformers
+//
+//let tree = train trainingset [|0..6|] ([0..4] |> Set.ofList) { MinLeaf = 1 }
+let t = basicTree data (labels, features)
