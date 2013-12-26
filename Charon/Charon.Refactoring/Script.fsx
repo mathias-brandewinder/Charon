@@ -22,14 +22,14 @@ type Obs =
 // The training set, a sequence of label, observation,
 // with some missing values added for good measure.
 let data = [ 
-    "A", { Int = Some(17); Float = None;     String = Some("One");   RawFloat = 42.0; RawInt = 1; };
-    "B", { Int = Some(17); Float = Some(1.); String = None;          RawFloat = 32.0; RawInt = 0; };
-    "A", { Int = Some(42); Float = Some(2.); String = Some("Three"); RawFloat = 42.0; RawInt = 1; };
-    "B", { Int = None;     Float = Some(3.); String = Some("One");   RawFloat = 22.0; RawInt = 0; };
-    "",  { Int = Some(42); Float = Some(3.); String = Some("One");   RawFloat = 22.0; RawInt = 0; };
-    "B", { Int = Some(42); Float = Some(3.); String = Some("One");   RawFloat = 22.0; RawInt = 0; };
-    "B", { Int = Some(42); Float = Some(3.); String = Some("One");   RawFloat = 22.0; RawInt = 0; };
-    "A", { Int = Some(17); Float = Some(2.); String = Some("Two");   RawFloat = 32.0; RawInt = 1; }; ]
+    "A", { Int = Some(17); Float = Some(1.);  String = Some("One");   RawFloat = 42.0; RawInt = 1; };
+    "B", { Int = Some(17); Float = Some(10.); String = None;          RawFloat = 32.0; RawInt = 0; };
+    "A", { Int = Some(42); Float = Some(1.);  String = Some("Three"); RawFloat = 42.0; RawInt = 1; };
+    "B", { Int = None;     Float = Some(10.); String = Some("One");   RawFloat = 22.0; RawInt = 0; };
+    "",  { Int = Some(42); Float = Some(1.);  String = Some("One");   RawFloat = 22.0; RawInt = 0; };
+    "B", { Int = Some(42); Float = Some(10.); String = Some("One");   RawFloat = 22.0; RawInt = 0; };
+    "B", { Int = Some(42); Float = Some(10.); String = Some("One");   RawFloat = 22.0; RawInt = 0; };
+    "A", { Int = Some(17); Float = Some(1.);  String = Some("Two");   RawFloat = 32.0; RawInt = 1; }; ]
 
 // Labels definition.
 let labels = "Label", (fun (txt:string) -> if txt = "" then None else Some(txt)) |> Categorical

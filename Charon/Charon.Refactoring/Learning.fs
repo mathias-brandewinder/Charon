@@ -124,10 +124,6 @@ module Learning =
         | Cont(x) -> 
             [| for i in filter -> x.[i] |] |> Cont
 
-    // TODO: IMPLEMENT THIS!
-    // Compute entropy and branch data
-    // Could be done cleaner, with different data struct
-    // for Disc and Cont (which requires splits). Later.
     let conditional (data:int[][]) (labels:_[]) =
         let total = data |> Array.sumBy (fun x -> Array.length x |> float)
         data 
@@ -140,7 +136,6 @@ module Learning =
         | Disc(x) -> conditional x labels, []
         | Cont(x) -> Continuous.analyze classes x 
         
-
     let selectFeature (dataset: Dataset) // full dataset
                       (filter: filter) // indexes of observations in use
                       (remaining: int Set) = // indexes of usable features 
@@ -156,8 +151,6 @@ module Learning =
 
         if (Seq.isEmpty candidates) then None
         else candidates |> Seq.maxBy (fun (_,_,_,g) -> g) |> fun (i,f,s,_) -> (i,f,s) |> Some
-
-
 
     let rec train (dataset:Dataset) (filter:filter) (remaining:int Set) (settings:Settings) =
 
@@ -183,6 +176,12 @@ module Learning =
                                               if Array.length filt = 0 then Leaf(mostLikely ())
                                               else train dataset filt remaining settings 
                                        |]))
-                | Cont(_) ->
+                | Cont(x) ->
                     let branch = { NumBranch.FeatIndex = i; Default = mostLikely (); Splits = s }
-                    Leaf(mostLikely ()) // TEMPORARY
+                    let filters = Continuous.subindex x filter s
+                    Branch(Num(branch, [|
+                                           for kv in filters ->
+                                              let filt = kv.Value
+                                              if Array.length filt = 0 then Leaf(mostLikely ())
+                                              else train dataset filt remaining settings 
+                                       |]))
