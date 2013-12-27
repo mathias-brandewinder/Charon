@@ -50,8 +50,10 @@ let features =
 //data |> List.map snd |> List.map extractor
 //
 //// Prepare the Training Set into proper features.
-//let transformers = translators data (labels,features)
-//let trainingset = prepare data transformers
-//
-//let tree = train trainingset [|0..6|] ([0..4] |> Set.ofList) { MinLeaf = 1 }
+let transformers = translators data (labels,features)
+let trainingset = prepare data transformers
+
+let tree = train trainingset [|0..6|] ([0..4] |> Set.ofList) { MinLeaf = 1 }
+
+
 let t = basicTree data (labels, features)
