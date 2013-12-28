@@ -60,10 +60,26 @@ module Tree =
     // TEMPORARY, FIX THIS
     let predictor x = sprintf "Outcome %i" x
 
-    let rec display (tree:Tree) (actives:int Set) (depth:int) =
+    let feat (translator:(string*FeatureMap)*((string*FeatureMap)[])) (branch:BranchType) (i:int) =
+        let _, fs = translator
+        match branch with
+        | Cat(branch,next) ->
+            let f = branch.FeatIndex
+            if (f<0 || f>Array.length fs)
+            then "Unknown","Unknown"
+            else
+                let (n, m) = fs.[f]
+                if m.InsideOut.ContainsKey f
+                then n, m.InsideOut.[i]
+                else n, "N/A"
+        | Num(branch,next) ->
+            "Not yet","Not yet"
+
+    let rec display (tree:Tree) (actives:int Set) (depth:int) (translator:(string*FeatureMap)*((string*FeatureMap)[]))=
+        let ls,fs = translator
         seq {
             match tree with
-            | Leaf(v)   -> yield sprintf "%s -> %s" (pad actives depth) (predictor v)
+            | Leaf(v)   -> yield sprintf "%s -> %s" (pad actives depth) (fst ls) //predictor v)
             | Branch(t) ->
                 match t with
                 | Cat(branch,next) ->
@@ -76,12 +92,13 @@ module Tree =
                         let pipe = 
                             if (i = last) 
                             then "└" else "├"
+                        let fname,fvalue = feat translator t i
                         match next.[i] with
                         | Leaf(z) -> 
-                            yield sprintf "%s%s %s = %s → %s" (pad actives depth) pipe "FEAT" "VALUE" (predictor z)
+                            yield sprintf "%s%s %s = %s → %s" (pad actives depth) pipe fname fvalue (fst ls + " " + (snd ls).InsideOut.[z])
                         | Branch(_) -> 
-                            yield sprintf "%s%s %s = %s" (pad actives' depth) pipe "FEAT" "VALUE"
-                            yield! display (next.[i]) (Set.add (depth + 1) actives') (depth + 1)
+                            yield sprintf "%s%s %s = %s" (pad actives' depth) pipe fname fvalue
+                            yield! display (next.[i]) (Set.add (depth + 1) actives') (depth + 1) translator
                 | Num(branch,next) ->
                     let last = (Array.length next) - 1 // index of last branch
                     for i in 0 .. last do
@@ -94,15 +111,17 @@ module Tree =
                             then "└" else "├"
                         match next.[i] with
                         | Leaf(z) -> 
-                            yield sprintf "%s%s %s = %s → %s" (pad actives depth) pipe "FEAT" "VALUE" (predictor z)
+                            yield sprintf "%s%s %s = %s → %s" (pad actives depth) pipe "FEAT" "VALUE" (fst ls + " " + (snd ls).InsideOut.[z])
                         | Branch(_) -> 
                             yield sprintf "%s%s %s = %s" (pad actives' depth) pipe "FEAT" "VALUE"
-                            yield! display (next.[i]) (Set.add (depth + 1) actives') (depth + 1)
+                            yield! display (next.[i]) (Set.add (depth + 1) actives') (depth + 1) translator
         }
 
-    let pretty (tree:Tree) =
-        display tree ([0] |> Set.ofList) 0
-        |> Seq.iter (printfn "%s")
+    let pretty (tree:Tree) (translator:(string*FeatureMap)*((string*FeatureMap)[])) =
+        display tree ([0] |> Set.ofList) 0 translator
+        |> Seq.map (sprintf "%s")
+        |> Seq.toArray
+        |> fun x -> System.String.Join("\n",x)
 //    // renders a decision tree
 //    let rec private plot (tree: Tree) 
 //                         (actives: int Set) 

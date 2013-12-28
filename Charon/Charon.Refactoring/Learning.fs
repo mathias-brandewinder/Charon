@@ -190,21 +190,38 @@ module Learning =
                                               else train dataset filt remaining settings 
                                        |]))
 
-    let basicTree (data:('l*'a) seq) ((labels:string*Feature<'l>), (features:(string*Feature<'a>) list)) =
+    type Results<'l,'a> = 
+        {   Classifier:'a -> string;
+            Tree: Tree;
+            Settings: Settings;
+            Quality: float option;
+            Pretty: string }
+
+    let basicTree<'l,'a> (data:('l*'a) seq) ((labels:string*Feature<'l>), (features:(string*Feature<'a>) list)) =
 
         let fs = List.length features
 
         let labelsMap = createFeatureMap (data |> Seq.map fst) (snd labels)
         let predictionToLabel = labelsMap.InsideOut
+        let maps = createTranslators data labels features
 
         let (labelizer,featurizers) = translators data (labels,features)
         let trainingset = prepare data (labelizer,featurizers)
         let xs = Array.length (trainingset.Outcomes)
-
-        let tree = train trainingset [|0..(xs-1)|] ([0..(fs-1)] |> Set.ofList) { MinLeaf = 5 }
+        let settings =  { MinLeaf = 5 }
+        let tree = train trainingset [|0..(xs-1)|] ([0..(fs-1)] |> Set.ofList) settings
 
         let converter = 
             let fs = featurizers |> List.unzip |> snd
             fun (obs:'a) -> List.map (fun f -> f obs) fs |> List.toArray
             
-        fun (obs:'a) -> labelsMap.InsideOut.[ decide tree (converter obs) ]
+        let classifier = fun (obs:'a) -> labelsMap.InsideOut.[ decide tree (converter obs) ]
+
+        let view = pretty tree maps
+
+        { Classifier = classifier;
+          Tree = tree;
+          Settings = settings;
+          Quality = None;
+          Pretty = view;
+        }

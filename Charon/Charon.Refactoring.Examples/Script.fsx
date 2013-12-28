@@ -36,7 +36,9 @@ let titanicDemo () =
             passenger, // label source
             passenger |] // features source
                 
-    let basicClassifier = basicTree training (labels,features)
+    let results = basicTree training (labels,features)
+
+    printfn "%s" (results.Pretty)
 
     training 
-    |> Seq.averageBy (fun (l,o) -> if (l.Survived |> Option.get |> fun x -> x.ToString()) = (basicClassifier o) then 1. else 0.)//printfn "%A -> %A" (l.Survived |> Option.get |> fun x -> x.ToString()) (basicClassifier o))
+    |> Seq.averageBy (fun (l,o) -> if (l.Survived |> Option.get |> fun x -> x.ToString()) = (results.Classifier o) then 1. else 0.)//printfn "%A -> %A" (l.Survived |> Option.get |> fun x -> x.ToString()) (basicClassifier o))

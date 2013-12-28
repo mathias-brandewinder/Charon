@@ -77,6 +77,11 @@ module Featurization =
             { OutsideIn = oneWay; InsideOut = back }
         | Num(_) -> { OutsideIn = Map.empty; InsideOut = Map.empty }
 
+    let createTranslators (data:(('l*'a)seq)) (labels:string*Feature<'l>) (features:(string*Feature<'a>)list) =
+        let ls,xs = data |> Seq.map fst, data |> Seq.map snd
+        (fst labels, createFeatureMap ls (snd labels)),
+        (features |> Seq.map (fun (n,f) -> n, createFeatureMap xs f) |> Seq.toArray)
+
     // Create a function that fully converts an observation
     // into an array of Value (i.e. int or float)
     let extractor (fs:(string*Feature<'a>) list) (fsMap:Map<string,int> list) =        

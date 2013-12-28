@@ -63,9 +63,9 @@ let titanicDemo () =
             passenger, // label source
             passenger |] // features source
             
-    let tree = basicTree training (labels,features)
+    let results = basicTree training (labels,features)
     
-    training |> Seq.take 20 |> Seq.iter (fun (l,o) -> printfn "%A, %A" l (tree o))
+    training |> Seq.take 20 |> Seq.iter (fun (l,o) -> printfn "%A, %A" l (results.Classifier o))
 
 
 [<EntryPoint>]
