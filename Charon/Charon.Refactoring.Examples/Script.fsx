@@ -38,7 +38,8 @@ let titanicDemo () =
                 
     let results = basicTree training (labels,features)
 
+    printfn "Quality, training: %.3f" (results.TrainingQuality |> Option.get)
+    printfn "Quality, holdout: %.3f" (results.HoldoutQuality |> Option.get)
+    
+    printfn "Tree:"
     printfn "%s" (results.Pretty)
-
-    training 
-    |> Seq.averageBy (fun (l,o) -> if (l.Survived |> Option.get |> fun x -> x.ToString()) = (results.Classifier o) then 1. else 0.)//printfn "%A -> %A" (l.Survived |> Option.get |> fun x -> x.ToString()) (basicClassifier o))

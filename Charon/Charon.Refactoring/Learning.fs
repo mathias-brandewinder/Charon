@@ -13,7 +13,7 @@ module Learning =
 
     type Dataset = { Classes:int; Outcomes:int []; Features: Variable [] }
     
-    type Settings = { MinLeaf:int; }
+    type Settings = { MinLeaf:int; Holdout:float }
 
     let discConv (x:Value) =
         match x with
@@ -194,7 +194,8 @@ module Learning =
         {   Classifier:'a -> string;
             Tree: Tree;
             Settings: Settings;
-            Quality: float option;
+            TrainingQuality: float option;
+            HoldoutQuality: float option;
             Pretty: string }
 
     let basicTree<'l,'a> (data:('l*'a) seq) ((labels:string*Feature<'l>), (features:(string*Feature<'a>) list)) =
@@ -206,10 +207,18 @@ module Learning =
         let maps = createTranslators data labels features
 
         let (labelizer,featurizers) = translators data (labels,features)
-        let trainingset = prepare data (labelizer,featurizers)
-        let xs = Array.length (trainingset.Outcomes)
-        let settings =  { MinLeaf = 5 }
-        let tree = train trainingset [|0..(xs-1)|] ([0..(fs-1)] |> Set.ofList) settings
+        
+        // TODO: inject user-defined settings
+        let settings =  { MinLeaf = 5; Holdout = 0.20 }
+                
+        let dataset = prepare data (labelizer,featurizers)
+
+        // TODO: improve with injected rng, proper sampling
+        let rng = System.Random()
+        let xs = Array.length dataset.Outcomes
+        let trainingsample,validationsample = [| 0 .. (xs - 1) |] |> Array.partition (fun x -> rng.NextDouble() > settings.Holdout)
+
+        let tree = train dataset trainingsample ([0..(fs-1)] |> Set.ofList) settings
 
         let converter = 
             let fs = featurizers |> List.unzip |> snd
@@ -217,11 +226,27 @@ module Learning =
             
         let classifier = fun (obs:'a) -> labelsMap.InsideOut.[ decide tree (converter obs) ]
 
+        let predictions =
+            (dataset.Outcomes, data) 
+            ||> Seq.zip
+            |> Seq.map (fun (l,(_,v)) -> if l = decide tree (converter v) then 1. else 0.)
+            |> Seq.toArray
+
+        let trainingquality = 
+            if (Array.length trainingsample = 0) then None
+            else
+                seq { for i in trainingsample -> predictions.[i] }
+                |> Seq.average |> Some
+        let holdoutquality = 
+            if (Array.length validationsample = 0) then None
+            else seq { for i in validationsample -> predictions.[i] } |> Seq.average |> Some
+
         let view = pretty tree maps
 
         { Classifier = classifier;
           Tree = tree;
           Settings = settings;
-          Quality = None;
+          TrainingQuality = trainingquality;
+          HoldoutQuality = holdoutquality
           Pretty = view;
         }

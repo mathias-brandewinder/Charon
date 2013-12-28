@@ -53,7 +53,7 @@ let features =
 let transformers = translators data (labels,features)
 let trainingset = prepare data transformers
 
-let tree = train trainingset [|0..6|] ([0..4] |> Set.ofList) { MinLeaf = 1 }
+let tree = train trainingset [|0..6|] ([0..4] |> Set.ofList) { MinLeaf = 1; Holdout = 0.1 }
 
 
 let t = basicTree data (labels, features)
