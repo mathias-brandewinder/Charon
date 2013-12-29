@@ -43,3 +43,11 @@ let titanicDemo () =
     
     printfn "Tree:"
     printfn "%s" (results.Pretty)
+
+    let forest = forest training (labels,features)
+
+    printfn "FOREST"
+    training |> Seq.take 25 |> Seq.iter (fun (l,x) -> printfn "%A -> %A" (l.Survived) (forest x))
+    let quality = training |> Seq.averageBy (fun (l,x) -> if (Option.get (l.Survived)).ToString() = (forest x) then 1. else 0.)
+    printfn "Forest quality: %f" quality
+    // printfn "%A -> %A" (l.Survived) (forest x))

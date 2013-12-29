@@ -250,3 +250,46 @@ module Learning =
           HoldoutQuality = holdoutquality
           Pretty = view;
         }
+
+    let forest<'l,'a> (data:('l*'a) seq) ((labels:string*Feature<'l>), (features:(string*Feature<'a>) list)) =
+
+        let fs = List.length features
+
+        let labelsMap = createFeatureMap (data |> Seq.map fst) (snd labels)
+        let predictionToLabel = labelsMap.InsideOut
+        let maps = createTranslators data labels features
+
+        let (labelizer,featurizers) = translators data (labels,features)
+        
+        // TODO: inject user-defined settings
+        let settings =  { MinLeaf = 5; Holdout = 0.20 }
+                
+        let dataset = prepare data (labelizer,featurizers)
+        let rng = System.Random()
+        let xs = Array.length dataset.Outcomes
+        let samplesize = float xs * settings.Holdout |> int
+        let fsset = sqrt (float fs) |> ceil |> int
+
+        let trees = 50
+
+        let forest = 
+            [| for t in 1 .. trees do
+                printfn "Training tree %i" t
+
+                let trainingsample = [| for i in 0 .. samplesize -> rng.Next(xs) |] |> Array.sort
+                let featuresSampe = [ for i in 0 .. fsset -> rng.Next(fs) ] |> Set.ofList
+
+                yield train dataset trainingsample featuresSampe settings |]
+
+        let converter = 
+            let fs = featurizers |> List.unzip |> snd
+            fun (obs:'a) -> List.map (fun f -> f obs) fs |> List.toArray
+            
+        let classifier = fun (obs:'a) -> 
+            forest 
+            |> Seq.map (fun tree -> labelsMap.InsideOut.[ decide tree (converter obs) ])
+            |> Seq.countBy id
+            |> Seq.maxBy snd
+            |> fst
+
+        classifier
