@@ -36,18 +36,20 @@ let titanicDemo () =
             passenger, // label source
             passenger |] // features source
                 
-//    let results = basicTree training (labels,features)
-//
-//    printfn "Quality, training: %.3f" (results.TrainingQuality |> Option.get)
-//    printfn "Quality, holdout: %.3f" (results.HoldoutQuality |> Option.get)
-//    
-//    printfn "Tree:"
-//    printfn "%s" (results.Pretty)
+    let results = basicTree training (labels,features)
 
+    printfn "Quality, training: %.3f" (results.TrainingQuality |> Option.get)
+    printfn "Quality, holdout: %.3f" (results.HoldoutQuality |> Option.get)
+    
+    printfn "Tree:"
+    printfn "%s" (results.Pretty)
+
+    printfn "Forest"
     let forest = forest training (labels,features)
 
-    printfn "FOREST"
-    training |> Seq.take 25 |> Seq.iter (fun (l,x) -> printfn "%A -> %A" (l.Survived) (forest x))
-    let quality = training |> Seq.averageBy (fun (l,x) -> if (Option.get (l.Survived)).ToString() = (forest x) then 1. else 0.)
+    // This is obviously weak-sauce, needs to be fixed.
+    let quality = 
+        training 
+        |> Seq.averageBy (fun (l,x) -> 
+            if (Option.get (l.Survived)).ToString() = (forest x) then 1. else 0.)
     printfn "Forest quality: %f" quality
-    // printfn "%A -> %A" (l.Survived) (forest x))
