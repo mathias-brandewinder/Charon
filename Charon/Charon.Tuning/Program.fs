@@ -55,6 +55,9 @@ let titanicDemo () =
           "Class", (fun (o:Passenger) -> o.Class) |> Categorical;
           "Age", (fun (o:Passenger) -> o.Age) |> Numerical;
           "Fare", (fun (o:Passenger) -> o.Fare) |> Numerical;
+          "Embarked", (fun (o:Passenger) -> o.Embarked) |> Categorical;
+          "Parents",  (fun (o:Passenger) -> o.ParentsOrChildren) |> Categorical;
+          "Spouse",  (fun (o:Passenger) -> o.SiblingsOrSpouse) |> Categorical;
         ]
 
     let training = 
@@ -62,10 +65,13 @@ let titanicDemo () =
         [| for passenger in data.Data -> 
             passenger, // label source
             passenger |] // features source
-            
-    let results = basicTree training (labels,features)
-    
-    training |> Seq.take 20 |> Seq.iter (fun (l,o) -> printfn "%A, %A" l (results.Classifier o))
+                
+    let forest = forest training (labels,features)
+
+    printfn "FOREST"
+    training |> Seq.take 25 |> Seq.iter (fun (l,x) -> printfn "%A -> %A" (l.Survived) (forest x))
+    let quality = training |> Seq.averageBy (fun (l,x) -> if (Option.get (l.Survived)).ToString() = (forest x) then 1. else 0.)
+    printfn "Forest quality: %f" quality
 
 
 [<EntryPoint>]
@@ -74,7 +80,7 @@ let main argv =
 
     // TESTING DEBUG DEMO
 
-    let tree = testingDemo ()
+//    let tree = testingDemo ()
     // TITANIC DEBUGGING / EXAMPLE
 
     let tree = titanicDemo ()

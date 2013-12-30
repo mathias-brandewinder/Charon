@@ -267,19 +267,16 @@ module Learning =
         let dataset = prepare data (labelizer,featurizers)
         let rng = System.Random()
         let xs = Array.length dataset.Outcomes
-        let samplesize = float xs * settings.Holdout |> int
+        let samplesize = float xs * (1. - settings.Holdout) |> int
         let fsset = sqrt (float fs) |> ceil |> int
 
-        let trees = 50
+        let trees = 100
 
         let forest = 
             [| for t in 1 .. trees do
-                printfn "Training tree %i" t
-
                 let trainingsample = [| for i in 0 .. samplesize -> rng.Next(xs) |] |> Array.sort
-                let featuresSampe = [ for i in 0 .. fsset -> rng.Next(fs) ] |> Set.ofList
-
-                yield train dataset trainingsample featuresSampe settings |]
+                let featuresSample = [ for i in 0 .. fsset -> rng.Next(fs) ] |> Set.ofList
+                yield train dataset trainingsample featuresSample settings |]
 
         let converter = 
             let fs = featurizers |> List.unzip |> snd

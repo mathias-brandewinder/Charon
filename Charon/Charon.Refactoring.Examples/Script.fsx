@@ -36,13 +36,13 @@ let titanicDemo () =
             passenger, // label source
             passenger |] // features source
                 
-    let results = basicTree training (labels,features)
-
-    printfn "Quality, training: %.3f" (results.TrainingQuality |> Option.get)
-    printfn "Quality, holdout: %.3f" (results.HoldoutQuality |> Option.get)
-    
-    printfn "Tree:"
-    printfn "%s" (results.Pretty)
+//    let results = basicTree training (labels,features)
+//
+//    printfn "Quality, training: %.3f" (results.TrainingQuality |> Option.get)
+//    printfn "Quality, holdout: %.3f" (results.HoldoutQuality |> Option.get)
+//    
+//    printfn "Tree:"
+//    printfn "%s" (results.Pretty)
 
     let forest = forest training (labels,features)
 

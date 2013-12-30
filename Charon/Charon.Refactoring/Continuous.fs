@@ -116,10 +116,11 @@ module Continuous =
             |> Array.map (fun (x,y) -> Option.get x, y)
             |> Array.sortBy fst
 
-        let splits = split labels (prepare labels filtered)
-
-        match splits with
-        | [] -> 1., []
-        | _  ->
-            let featurized = binnize splits labels filtered
-            condent featurized, splits
+        if (filtered.Length <= 1) then 1., [] // TODO: check that
+        else
+            let splits = split labels (prepare labels filtered)
+            match splits with
+            | [] -> 1., []
+            | _  ->
+                let featurized = binnize splits labels filtered
+                condent featurized, splits
