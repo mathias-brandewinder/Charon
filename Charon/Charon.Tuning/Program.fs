@@ -69,8 +69,8 @@ let titanicDemo () =
     let forest = forest training (labels,features)
 
     printfn "FOREST"
-    training |> Seq.take 25 |> Seq.iter (fun (l,x) -> printfn "%A -> %A" (l.Survived) (forest x))
-    let quality = training |> Seq.averageBy (fun (l,x) -> if (Option.get (l.Survived)).ToString() = (forest x) then 1. else 0.)
+    training |> Seq.take 25 |> Seq.iter (fun (l,x) -> printfn "%A -> %A" (l.Survived) (forest.Classifier x))
+    let quality = training |> Seq.averageBy (fun (l,x) -> if (Option.get (l.Survived)).ToString() = (forest.Classifier x) then 1. else 0.)
     printfn "Forest quality: %f" quality
 
 
@@ -84,6 +84,5 @@ let main argv =
     // TITANIC DEBUGGING / EXAMPLE
 
     let tree = titanicDemo ()
-
 
     0 // return an integer exit code

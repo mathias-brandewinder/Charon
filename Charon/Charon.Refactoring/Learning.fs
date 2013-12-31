@@ -251,6 +251,11 @@ module Learning =
           Pretty = view;
         }
 
+    type ForestResults<'l,'a> = 
+        {   Classifier:'a -> string;
+            Settings: Settings;
+            OutOfBagQuality: float; }
+            
     let forest<'l,'a> (data:('l*'a) seq) ((labels:string*Feature<'l>), (features:(string*Feature<'a>) list)) =
 
         let fs = List.length features
@@ -272,16 +277,44 @@ module Learning =
 
         let trees = 100
 
-        let forest = 
+        let models = 
             [| for t in 1 .. trees do
                 let trainingsample = [| for i in 0 .. samplesize -> rng.Next(xs) |] |> Array.sort
                 let featuresSample = [ for i in 0 .. fsset -> rng.Next(fs) ] |> Set.ofList
-                yield train dataset trainingsample featuresSample settings |]
-
+                yield trainingsample, train dataset trainingsample featuresSample settings |]
+        
+        let forest = models |> Array.map snd 
+         
         let converter = 
             let fs = featurizers |> List.unzip |> snd
             fun (obs:'a) -> List.map (fun f -> f obs) fs |> List.toArray
             
+        // for each model, what observations are used
+        let samples = 
+            models 
+            |> Seq.mapi (fun i (x,_) -> i, x |> Set.ofArray) |> Seq.toArray
+
+        // observation index, and all models where it is OOB
+        let oob = 
+            seq { 0 .. (xs - 1) } 
+            |> Seq.map (fun obs ->
+                obs, samples |> Seq.filter (fun (j,xs) -> not (Set.contains obs xs)) |> Seq.map fst |> Set.ofSeq)
+            |> Seq.filter (fun (obs,models) -> Set.count models > 0)
+
+        let oobquality =             
+            let predictiondata = Seq.zip dataset.Outcomes data |> Seq.toArray
+            oob
+            |> Seq.map (fun (obs,models) ->
+                let (l,(_,v)) = predictiondata.[obs]
+                seq { for model in models -> 
+                          let tree = forest.[model]
+                          decide tree (converter v) }
+                |> Seq.countBy id
+                |> Seq.maxBy snd
+                |> fst
+                |> fun x -> if x = l then 1. else 0.)
+            |> Seq.average
+                               
         let classifier = fun (obs:'a) -> 
             forest 
             |> Seq.map (fun tree -> labelsMap.InsideOut.[ decide tree (converter obs) ])
@@ -289,4 +322,6 @@ module Learning =
             |> Seq.maxBy snd
             |> fst
 
-        classifier
+        {   Classifier = classifier;
+            Settings = settings;
+            OutOfBagQuality = oobquality; }

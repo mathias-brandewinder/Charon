@@ -45,11 +45,12 @@ let titanicDemo () =
     printfn "%s" (results.Pretty)
 
     printfn "Forest"
-    let forest = forest training (labels,features)
+    let forestResults = forest training (labels,features)
+    printfn "OOB quality: %f" forestResults.OutOfBagQuality
 
-    // This is obviously weak-sauce, needs to be fixed.
+    // For comparison: quality over entire dataset.
     let quality = 
         training 
         |> Seq.averageBy (fun (l,x) -> 
-            if (Option.get (l.Survived)).ToString() = (forest x) then 1. else 0.)
+            if (Option.get (l.Survived)).ToString() = (forestResults.Classifier x) then 1. else 0.)
     printfn "Forest quality: %f" quality
