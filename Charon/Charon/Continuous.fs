@@ -1,5 +1,6 @@
 ﻿namespace Charon
 
+[<RequireQualifiedAccess>]
 module Continuous =
 
     open System
@@ -59,7 +60,7 @@ module Continuous =
                 else walk tl (index+1)
         walk (splits |> List.sort) 0
 
-    let subindex (data: (float option * _)[]) (filter:Filter) splits =
+    let subindex (data: (float option * _)[]) (filter:filter) splits =
         let keys = List.length splits
         let map = seq { for k in 0 .. keys -> k, [||] } |> Map.ofSeq // can probably make array
         seq { for i in filter do 
@@ -70,7 +71,7 @@ module Continuous =
         |> Seq.map (fun (x,grp) -> x, grp |> Seq.map fst |> Seq.toArray)
         |> Seq.fold (fun map (k,v) -> Map.add k v map) map
 
-    let filterBy (feature: _ []) (filter:Filter) =
+    let filterBy (feature: _ []) (filter:filter) =
         filter |> Array.map (fun i -> feature.[i])
 
     let removeMissing (data:(float option * _) seq) =
@@ -107,3 +108,19 @@ module Continuous =
 
         let featurized = binnize splits keys filtered
         splits, condent featurized
+
+    let analyze (labels:int) (feature:(float option*int)[]) =
+        let filtered = 
+            feature 
+            |> Array.filter (fun (x,y) -> (x |> Option.isSome))
+            |> Array.map (fun (x,y) -> Option.get x, y)
+            |> Array.sortBy fst
+
+        if (filtered.Length <= 1) then 1., [] // TODO: check that
+        else
+            let splits = split labels (prepare labels filtered)
+            match splits with
+            | [] -> 1., []
+            | _  ->
+                let featurized = binnize splits labels filtered
+                condent featurized, splits

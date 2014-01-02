@@ -1,4 +1,4 @@
-﻿namespace Charon.Refactoring
+﻿namespace Charon
 
 module Featurization =
 

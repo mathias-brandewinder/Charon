@@ -1,7 +1,7 @@
 ﻿namespace Charon
 
 type index = int []
-type Filter = int []
+type filter = int []
 
 [<RequireQualifiedAccess>]
 module Index =

@@ -7,10 +7,10 @@
 #load "Continuous.fs"
 #load "Learning.fs"
 
-open Charon.Refactoring
-open Charon.Refactoring.Featurization
-open Charon.Refactoring.Learning
-open Charon.Refactoring.Tree
+open Charon
+open Charon.Featurization
+open Charon.Learning
+open Charon.Tree
 
 // Our observations, with various types.
 type Obs = 

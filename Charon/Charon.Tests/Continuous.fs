@@ -6,7 +6,6 @@ module ``Continuous Tests`` =
     open FsUnit
 
     open Charon
-    open Charon.Continuous
     open Entropy
 
     [<Test>]
@@ -32,5 +31,5 @@ module ``Continuous Tests`` =
             |> Seq.toArray
             |> h
 
-        let (splits,value) = splitValue keys feature index 
+        let (splits,value) = Continuous.splitValue keys feature index 
         splits  |> should equal [ 1.]

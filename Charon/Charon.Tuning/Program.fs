@@ -1,7 +1,7 @@
 ﻿open System
-open Charon.Refactoring
-open Charon.Refactoring.Featurization
-open Charon.Refactoring.Learning
+open Charon
+open Charon.Featurization
+open Charon.Learning
 open FSharp.Data
 
 type Obs = 

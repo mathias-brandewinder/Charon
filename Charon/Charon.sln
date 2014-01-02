@@ -18,10 +18,6 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Charon.Examples", "Charon.E
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Charon.Tuning", "Charon.Tuning\Charon.Tuning.fsproj", "{16983BB5-C798-4A6A-A6B1-A1FD656C731A}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Charon.Refactoring", "Charon.Refactoring\Charon.Refactoring.fsproj", "{DD23F89A-C1D7-4622-B835-7340AB784957}"
-EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Charon.Refactoring.Examples", "Charon.Refactoring.Examples\Charon.Refactoring.Examples.fsproj", "{6F2031AD-B4D5-4F9B-BDE7-E448D95DB23E}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -44,14 +40,6 @@ Global
 		{16983BB5-C798-4A6A-A6B1-A1FD656C731A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{16983BB5-C798-4A6A-A6B1-A1FD656C731A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{16983BB5-C798-4A6A-A6B1-A1FD656C731A}.Release|Any CPU.Build.0 = Release|Any CPU
-		{DD23F89A-C1D7-4622-B835-7340AB784957}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{DD23F89A-C1D7-4622-B835-7340AB784957}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{DD23F89A-C1D7-4622-B835-7340AB784957}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{DD23F89A-C1D7-4622-B835-7340AB784957}.Release|Any CPU.Build.0 = Release|Any CPU
-		{6F2031AD-B4D5-4F9B-BDE7-E448D95DB23E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{6F2031AD-B4D5-4F9B-BDE7-E448D95DB23E}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{6F2031AD-B4D5-4F9B-BDE7-E448D95DB23E}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{6F2031AD-B4D5-4F9B-BDE7-E448D95DB23E}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

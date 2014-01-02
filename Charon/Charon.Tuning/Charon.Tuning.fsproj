@@ -62,11 +62,6 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Charon.Refactoring\Charon.Refactoring.fsproj">
-      <Name>Charon.Refactoring</Name>
-      <Project>{dd23f89a-c1d7-4622-b835-7340ab784957}</Project>
-      <Private>True</Private>
-    </ProjectReference>
     <ProjectReference Include="..\Charon\Charon.fsproj">
       <Name>Charon</Name>
       <Project>{8799c039-1225-4dee-b7ba-5298405585dd}</Project>

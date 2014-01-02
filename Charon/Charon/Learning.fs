@@ -1,11 +1,11 @@
-﻿namespace Charon.Refactoring
+﻿namespace Charon
 
 module Learning =
 
-    open Charon.Refactoring
-    open Charon.Refactoring.Entropy
-    open Charon.Refactoring.Featurization
-    open Charon.Refactoring.Tree
+    open Charon
+    open Charon.Entropy
+    open Charon.Featurization
+    open Charon.Tree
 
     type Variable =
         | Disc of int [][] // outcome, and corresponding observation indexes

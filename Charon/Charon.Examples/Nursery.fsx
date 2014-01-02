@@ -1,7 +1,9 @@
 ﻿#r @"..\Charon\bin\Debug\Charon.dll"
 
 open Charon
-open Charon.DecisionTree
+open Charon.Tree
+open Charon.Featurization
+open Charon.Learning
 open System
 open System.IO
 open System.Diagnostics
@@ -37,7 +39,7 @@ let readDataset () =
         |> Array.map (fun line -> line.Split(','))
         |> Array.filter (fun line -> Array.length line = 9)
         |> Array.map (fun line ->
-            line.[8] |> StringCategory, // the label
+            line.[8], // the label
             { parents = line.[0];
               has_nurs = line.[1];
               form = line.[2];
@@ -58,37 +60,22 @@ let nursery () =
     let data = readDataset ()
 
     // define how the features should be extracted
+    let labels = "Survived", (fun (x:string) -> Some(x)) |> Categorical
+
     let features = 
-        [| ("parents", fun x -> x.parents |> StringCategory);
-           ("has_nurs", fun x -> x.has_nurs |> StringCategory);
-           ("form", fun x -> x.form |> StringCategory);
-           ("children", fun x -> x.children |> StringCategory);
-           ("housing", fun x -> x.housing |> StringCategory);
-           ("finance", fun x -> x.finance |> StringCategory);
-           ("social", fun x -> x.social |> StringCategory);
-           ("health", fun x -> x.health |> StringCategory); |]
+        [  ("parents", (fun x -> x.parents |> Some) |> Categorical);
+           ("has_nurs", (fun x -> x.has_nurs |> Some) |> Categorical);
+           ("form", (fun x -> x.form |> Some) |> Categorical);
+           ("children", (fun x -> x.children |> Some) |> Categorical);
+           ("housing", (fun x -> x.housing |> Some) |> Categorical);
+           ("finance", (fun x -> x.finance |> Some) |> Categorical);
+           ("social", (fun x -> x.social |> Some) |> Categorical);
+           ("health", (fun x -> x.health |> Some) |> Categorical); ]
 
     printfn "Generating tree"
-    let treeClassifier, report = createID3Classifier data features { DefaultID3Config with DetailLevel = Verbose }
-    report.Value.Pretty()
+    let results = basicTree data (labels,features)
+    printfn "%s" (results.Pretty)
 
     printfn "Forecast evaluation: tree"
-    let correct = 
-        data
-        |> Array.averageBy (fun (label, obs) -> 
-            if label = Some(treeClassifier obs) then 1. else 0.)
-    printfn "Correct: %.4f" correct
-
-    printfn "Generating forest"
-    let iters = 50 // number of trees to grow
-    let rng = Random(42) // setting explicit RNG to replicate results
-    let config = { DefaultRFConfig with RNG = Some(rng); Iterations = iters }
-    let forestClassifier, report = createForestClassifier data features config
-
-    printfn "Forecast evaluation: forest"            
-    let correct = 
-        data
-        |> Array.averageBy (fun (label, obs) -> 
-            if label = Some(forestClassifier obs) then 1. else 0.)
-    printfn "Correct: %.4f" correct
-
+    printfn "Correct, training: %.4f" (results.TrainingQuality |> Option.get)
+    printfn "Correct, validation: %.4f" (results.HoldoutQuality |> Option.get)

@@ -1,69 +1,10 @@
 ﻿namespace Charon
 
-module Tree = 
+module Tree =
 
-    open Charon
-    open Charon.Entropy
-    open Charon.MDL
-    open Charon.Continuous
-    open Charon.Discrete
+    open Charon.Featurization
 
-    type Value =
-        | Int   of int option
-        | Float of float option
-
-    type Feature =
-        | Numeric of (float option * int) []
-        | Categorical of Map<int, index> // TODO: possibly change representation
-
-    type Dataset = { Classes:int; Outcomes:int []; Features: Feature [] }
-
-    type SplitType =
-        | NumericSplit of float list * float // splits, conditional entropy
-        | CategorySplit of float // conditional entropy
-        
-    let tempSplitValue classes outcomes feature filter =
-        match feature with
-        | Numeric(x) -> NumericSplit(splitValue classes x filter)
-        | Categorical(x) -> CategorySplit(conditionalEntropy2 x filter outcomes) 
-
-    let selectFeature (dataset: Dataset) // full dataset
-                      (filter: Filter) // indexes of observations in use
-                      (remaining: int Set) = // indexes of usable features 
-        
-        let classes, outcomes, features = dataset.Classes, dataset.Outcomes, dataset.Features
-
-        let labels = outcomes |> Continuous.filterBy filter
-        let initialEntropy =
-            labels |> countFrom |> h
-
-        let candidates = 
-            seq { for f in remaining -> f, tempSplitValue classes outcomes (features.[f]) filter }
-            |> Seq.filter (fun (i,splitType) -> 
-                match splitType with
-                | NumericSplit(splits, value) -> 
-                    match splits with
-                    | [] -> false
-                    | _  -> initialEntropy - value > 0.
-                | CategorySplit(value) -> initialEntropy - value > 0.)
-
-        if (Seq.isEmpty candidates)
-        then None
-        else 
-            candidates 
-            |> Seq.maxBy (fun (i, splitType) ->
-                match splitType with
-                | NumericSplit(splits, value) -> initialEntropy - value > 0.
-                | CategorySplit(value) -> initialEntropy - value > 0.)
-            |> Some
-
-    let mostLikely (outcomes: int []) = 
-        outcomes 
-        |> Seq.countBy id 
-        |> Seq.maxBy snd 
-        |> fst
-
-    type NumBranch = { FeatIndex: int; Default: int; Splits:float list; }
+    type NumBranch = { FeatIndex: int; Default: int; Splits: float list; }
     type CatBranch = { FeatIndex: int; Default: int; }
 
     type BranchType =
@@ -73,74 +14,110 @@ module Tree =
         | Leaf of int
         | Branch of BranchType
 
-    let rec growTree (dataset: Dataset) // full dataset
-                     (filter: Filter) // indexes of observations in use
-                     (remaining: int Set) // indexes of features usable
-                     (featureSelector: int Set -> int Set)
-                     (minLeaf: int) = // min elements in a leaf   
-        
-        let classes, outcomes, features = dataset.Classes, dataset.Outcomes, dataset.Features
-                   
-        if (remaining = Set.empty) then              
-            Leaf(filter |> Continuous.filterBy outcomes |> mostLikely)
-        elif (Array.length filter < minLeaf) then
-            Leaf(filter |> Continuous.filterBy outcomes |> mostLikely)
-        else
-            let candidates = featureSelector remaining
-            let best = selectFeature dataset filter candidates
+    let indexOf splits value =
+        let rec walk splits index =
+            match splits with
+            | [] -> index
+            | hd::tl ->
+                if value < hd
+                then index
+                else walk tl (index+1)
+        walk (splits |> List.sort) 0
 
-            match best with
-            | None -> Leaf(filter |> Continuous.filterBy outcomes |> mostLikely)
-            | Some(index,splitType) ->
-                let remaining = remaining |> Set.remove index
-                let feature = features.[index]
-                match splitType with
-                | NumericSplit(splits, value) -> 
-                    match feature with
-                    | Numeric(feature) ->
-                        let indexes = subindex feature filter splits
-                        let likely = filter |> Continuous.filterBy outcomes |> mostLikely
-                        let branch = { FeatIndex = index; Default = likely; Splits = splits }
-                        Branch(Num(branch,  [| 
-                                                for i in indexes -> 
-                                                    if Array.length (i.Value) < minLeaf then Leaf(likely)
-                                                    else growTree dataset (i.Value) remaining featureSelector minLeaf 
-                                            |]))
-                    | Categorical(x) -> failwith "Feature mismatch"
-                | CategorySplit(value) -> 
-                    match feature with
-                    | Categorical(x) -> 
-                        let feature = x
-                        let splits = filterBy filter feature
-                        let likely = splits |> Discrete.mostLikely
-                        let branch = { FeatIndex = index; Default = likely }
-                        Branch(Cat(branch, [| 
-                                              for i in splits -> 
-                                                  if Array.length (i.Value) < minLeaf then Leaf(likely)
-                                                  else growTree dataset (i.Value) remaining featureSelector minLeaf 
-                                           |]))
-                    | Numeric(feature) -> failwith "Feature mismatch"
-
-    let rec decide (tree: Tree) (obs: Value []) =
+    let rec decide (tree: Tree) (observation: Value []) =
         match tree with
-        | Leaf(outcome) -> outcome
-        | Branch(branchType) ->
-            match branchType with
-            | Cat(desc, trees) ->
-                let value = obs.[desc.FeatIndex]
+        | Leaf(v)   -> v
+        | Branch(t) ->
+            match t with
+            | Cat(branch,next) ->
+                let value = observation.[branch.FeatIndex]
                 match value with
-                | Int(v) ->
-                    match v with
-                    | None -> decide trees.[desc.Default] obs
-                    | Some(i) -> decide trees.[i] obs
-                | Float(_) -> failwith "Feature mismatch"         
-            | Num(desc, trees) ->
-                let value = obs.[desc.FeatIndex]
+                | Int(i) ->
+                    let index = 
+                        match i with 
+                        | None    -> branch.Default
+                        | Some(x) -> x
+                    decide next.[index] observation
+                | _ -> failwith "Observation and tree do not match"
+            | Num(branch,next) ->
+                let value = observation.[branch.FeatIndex]
                 match value with
-                | Float(v) ->          
-                    match v with
-                    | None -> decide trees.[desc.Default] obs
-                    | Some(f) ->
-                        let i = Continuous.indexOf desc.Splits f 
-                        decide trees.[i] obs
-                | Int(v) -> failwith "Feature mismatch"
+                | Float(f) ->
+                    let index = 
+                        match f with 
+                        | None    -> branch.Default
+                        | Some(x) -> indexOf branch.Splits x
+                    decide next.[index] observation
+                | _ -> failwith "Observation and tree do not match"              
+
+    let private pad (actives: int Set) (depth: int) =
+        System.String.Join("", 
+            [|  for i in 0 .. (depth - 1) do 
+                    if (actives.Contains i) 
+                    then yield "│   " 
+                    else yield "   " |])
+
+    let feat (translator:(string*FeatureMap)*((string*FeatureMap)[])) (branch:BranchType) (i:int) =
+        let _, fs = translator
+        match branch with
+        | Cat(branch,next) ->
+            let f = branch.FeatIndex
+            let (n, m) = fs.[f]
+            n, m.InsideOut.[i]
+        | Num(branch,next) ->
+            let f = branch.FeatIndex
+            let splits = branch.Splits |> List.toArray
+            if (i=Array.length splits)
+            then
+                (fst fs.[f]), sprintf ">  %.3f" (splits.[i-1])
+            else
+                (fst fs.[f]), sprintf "<= %.3f" (splits.[i])
+
+    let rec display (tree:Tree) (actives:int Set) (depth:int) (translator:(string*FeatureMap)*((string*FeatureMap)[]))=
+        let ls,fs = translator
+        seq {
+            match tree with
+            | Leaf(v)   -> yield sprintf "%s -> %s" (pad actives depth) (fst ls) //predictor v)
+            | Branch(t) ->
+                match t with
+                | Cat(branch,next) ->
+                    let last = (Array.length next) - 1 // index of last branch
+                    for i in 0 .. last do
+                        let actives' = 
+                            if (i = last) 
+                            then Set.remove depth actives 
+                            else actives
+                        let pipe = 
+                            if (i = last) 
+                            then "└" else "├"
+                        let fname,fvalue = feat translator t i
+                        match next.[i] with
+                        | Leaf(z) -> 
+                            yield sprintf "%s%s %s = %s → %s" (pad actives depth) pipe fname fvalue (fst ls + " " + (snd ls).InsideOut.[z])
+                        | Branch(_) -> 
+                            yield sprintf "%s%s %s = %s" (pad actives' depth) pipe fname fvalue
+                            yield! display (next.[i]) (Set.add (depth + 1) actives') (depth + 1) translator
+                | Num(branch,next) ->
+                    let last = (Array.length next) - 1 // index of last branch
+                    for i in 0 .. last do
+                        let actives' = 
+                            if (i = last) 
+                            then Set.remove depth actives 
+                            else actives
+                        let pipe = 
+                            if (i = last) 
+                            then "└" else "├"
+                        let fname,fvalue = feat translator t i
+                        match next.[i] with
+                        | Leaf(z) -> 
+                            yield sprintf "%s%s %s = %s → %s" (pad actives depth) pipe fname fvalue (fst ls + " " + (snd ls).InsideOut.[z])
+                        | Branch(_) -> 
+                            yield sprintf "%s%s %s = %s" (pad actives' depth) pipe fname fvalue
+                            yield! display (next.[i]) (Set.add (depth + 1) actives') (depth + 1) translator
+        }
+
+    let pretty (tree:Tree) (translator:(string*FeatureMap)*((string*FeatureMap)[])) =
+        display tree ([0] |> Set.ofList) 0 translator
+        |> Seq.map (sprintf "%s")
+        |> Seq.toArray
+        |> fun x -> System.String.Join("\n",x)
