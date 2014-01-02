@@ -12,6 +12,7 @@ open System.Diagnostics
 
 // Test on the Nursery dataset from UC Irvine ML Repository:
 // http://archive.ics.uci.edu/ml/machine-learning-databases/nursery/
+// First, download the file to the desktop, and rename it from .data to .txt
 
 // representation of an observation;
 // the 8 available features are simply
@@ -79,3 +80,6 @@ let nursery () =
     printfn "Forecast evaluation: tree"
     printfn "Correct, training: %.4f" (results.TrainingQuality |> Option.get)
     printfn "Correct, validation: %.4f" (results.HoldoutQuality |> Option.get)
+
+    let forestResults = forest data (labels,features)
+    printfn "Forest quality: %.4f" forestResults.OutOfBagQuality
