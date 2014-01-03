@@ -10,15 +10,17 @@ module Index =
 
     let (empty: index) = [||]
 
-    let intersect (ar1:int[]) (ar2:int[]) = 
-        Seq.unfold (fun (i,j) -> 
-            if (i >= Array.length ar1) then None 
-            elif (j >= Array.length ar2) then None
-            else
-                if ar1.[i] = ar2.[j] then Some(Some(ar1.[i]), (i+1, j+1))
-                elif ar1.[i] < ar2.[j] then Some(None, (i+1,j))
-                else Some(None, (i,j+1))) (0,0)
-        |> Seq.choose id
+    let intersect (x:int[]) (y:int[]) =
+        let (i,j) = (0,0)
+        let lx,ly = x.Length, y.Length
+        let rec search (a,b) =
+            if a < lx && b < ly
+            then 
+                if x.[a] = y.[b] then Some(x.[a],(a+1,b+1))
+                elif x.[a] < y.[b] then search (a+1,b)
+                else search (a,b+1)
+            else None
+        Seq.unfold (fun (a,b) -> search (a,b)) (0,0) 
         |> Seq.toArray
           
     let merge (ar1:int[]) (ar2:int[]) =
