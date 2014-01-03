@@ -66,7 +66,7 @@ let titanicDemo () =
             passenger, // label source
             passenger |] // features source
                 
-    let forest = forest training (labels,features)
+    let forest = forest training (labels,features) DefaultSettings
 
     printfn "FOREST"
     training |> Seq.take 25 |> Seq.iter (fun (l,x) -> printfn "%A -> %A" (l.Survived) (forest.Classifier x))

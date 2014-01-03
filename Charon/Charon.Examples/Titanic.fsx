@@ -57,7 +57,7 @@ let titanicDemo () =
         ]
                 
     // We run a basic tree classifier...
-    let results = basicTree training (labels,features)
+    let results = basicTree training (labels,features) DefaultSettings
 
     // ... compute the quality on the training set and validation set...
     printfn "Quality, training: %.3f" (results.TrainingQuality |> Option.get)
@@ -71,7 +71,7 @@ let titanicDemo () =
     printfn "Forest"
 
     // ... and display the out-of-bag classification quality:
-    let forestResults = forest training (labels,features)
+    let forestResults = forest training (labels,features) DefaultSettings
     printfn "OOB quality: %f" forestResults.OutOfBagQuality
 
     // For comparison: quality over entire dataset.

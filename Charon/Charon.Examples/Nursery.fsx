@@ -74,12 +74,12 @@ let nursery () =
            ("health", (fun x -> x.health |> Some) |> Categorical); ]
 
     printfn "Generating tree"
-    let results = basicTree data (labels,features)
+    let results = basicTree data (labels,features) DefaultSettings
     printfn "%s" (results.Pretty)
 
     printfn "Forecast evaluation: tree"
     printfn "Correct, training: %.4f" (results.TrainingQuality |> Option.get)
     printfn "Correct, validation: %.4f" (results.HoldoutQuality |> Option.get)
 
-    let forestResults = forest data (labels,features)
+    let forestResults = forest data (labels,features) DefaultSettings
     printfn "Forest quality: %.4f" forestResults.OutOfBagQuality

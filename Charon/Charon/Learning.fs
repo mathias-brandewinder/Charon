@@ -2,6 +2,7 @@
 
 module Learning =
 
+    open System
     open Charon
     open Charon.Entropy
     open Charon.Featurization
@@ -13,8 +14,8 @@ module Learning =
 
     type Dataset = { Classes:int; Outcomes:int []; Features: Variable [] }
     
-    type Settings = { MinLeaf:int; Holdout:float }
-
+    type Settings = { MinLeaf:int; Holdout:float; RandomSeed:int; ForestSize:int }
+    
     let discConv (x:Value) =
         match x with
         | Int(x) -> x
@@ -195,7 +196,9 @@ module Learning =
             HoldoutQuality: float option;
             Pretty: string }
 
-    let basicTree<'l,'a> (data:('l*'a) seq) ((labels:string*Feature<'l>), (features:(string*Feature<'a>) list)) =
+    let DefaultSettings = { MinLeaf = 5; Holdout = 0.20; RandomSeed = 314159; ForestSize = 100 }
+
+    let basicTree<'l,'a> (data:('l*'a) seq) ((labels:string*Feature<'l>), (features:(string*Feature<'a>) list)) (settings:Settings) =
 
         let fs = List.length features
 
@@ -204,14 +207,11 @@ module Learning =
         let maps = createTranslators data labels features
 
         let (labelizer,featurizers) = translators data (labels,features)
-        
-        // TODO: inject user-defined settings
-        let settings =  { MinLeaf = 5; Holdout = 0.20 }
-                
+                        
         let dataset = prepare data (labelizer,featurizers)
 
-        // TODO: improve with injected rng, proper sampling
-        let rng = System.Random()
+        // TODO: improve with proper sampling
+        let rng = Random(settings.RandomSeed)
         let xs = Array.length dataset.Outcomes
         let trainingsample,validationsample = [| 0 .. (xs - 1) |] |> Array.partition (fun x -> rng.NextDouble() > settings.Holdout)
 
@@ -253,7 +253,7 @@ module Learning =
             Settings: Settings;
             OutOfBagQuality: float; }
             
-    let forest<'l,'a> (data:('l*'a) seq) ((labels:string*Feature<'l>), (features:(string*Feature<'a>) list)) =
+    let forest<'l,'a> (data:('l*'a) seq) ((labels:string*Feature<'l>), (features:(string*Feature<'a>) list)) (settings:Settings) =
 
         let fs = List.length features
 
@@ -262,17 +262,14 @@ module Learning =
         let maps = createTranslators data labels features
 
         let (labelizer,featurizers) = translators data (labels,features)
-        
-        // TODO: inject user-defined settings
-        let settings =  { MinLeaf = 5; Holdout = 0.20 }
-                
+                        
         let dataset = prepare data (labelizer,featurizers)
-        let rng = System.Random()
+        let rng = System.Random(settings.RandomSeed)
         let xs = Array.length dataset.Outcomes
         let samplesize = float xs * (1. - settings.Holdout) |> int
         let fsset = sqrt (float fs) |> ceil |> int
 
-        let trees = 100
+        let trees = settings.ForestSize
 
         let models = 
             [| for t in 1 .. trees do
