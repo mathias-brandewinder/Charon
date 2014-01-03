@@ -4,13 +4,13 @@ based on the Kaggle "Titanic: Machine Learning from Disaster" dataset:
 http://www.kaggle.com/c/titanic-gettingStarted
 *)
 
-#r @"..\Charon.Refactoring\bin\Debug\Charon.Refactoring.dll"
+#r @"..\Charon\bin\Debug\Charon.dll"
 #r @"..\packages\FSharp.Data.1.1.9\lib\net40\FSharp.Data.dll"
 
-open Charon.Refactoring
-open Charon.Refactoring.Tree
-open Charon.Refactoring.Featurization
-open Charon.Refactoring.Learning
+open Charon
+open Charon.Tree
+open Charon.Featurization
+open Charon.Learning
 open System
 open FSharp.Data
 

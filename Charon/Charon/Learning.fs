@@ -114,8 +114,23 @@ module Learning =
         |> Seq.maxBy snd 
         |> fst
 
+    // This assumes both arrays are sorted.
+    let private intersect (x:int[]) (y:int[]) =
+        let (i,j) = (0,0)
+        let lx,ly = x.Length, y.Length
+        let rec search (a,b) =
+            if a < lx && b < ly
+            then 
+                if x.[a] = y.[b] then Some(x.[a],(a+1,b+1))
+                elif x.[a] < y.[b] then search (a+1,b)
+                else search (a,b+1)
+            else None
+        Seq.unfold (fun (a,b) -> search (a,b)) (0,0) 
+        |> Seq.toArray
+
     let arrayFilter (array:int[]) (filter:int[]) =
-        filter |> Array.filter (fun x -> array |> Array.exists (fun z -> z = x))
+        intersect array filter
+        //filter |> Array.filter (fun x -> array |> Array.exists (fun z -> z = x))
 
     let filteredBy (filter:filter) (feature:Variable) =
         match feature with
