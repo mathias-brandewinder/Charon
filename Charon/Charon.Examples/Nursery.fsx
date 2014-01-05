@@ -61,7 +61,7 @@ let nursery () =
     let data = readDataset ()
 
     // define how the features should be extracted
-    let labels = "Survived", (fun (x:string) -> Some(x)) |> Categorical
+    let labels = "Decision", (fun (x:string) -> Some(x)) |> Categorical
 
     let features = 
         [  ("parents", (fun x -> x.parents |> Some) |> Categorical);
