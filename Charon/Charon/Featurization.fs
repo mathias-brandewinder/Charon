@@ -1,5 +1,6 @@
 ﻿namespace Charon
 
+[<AutoOpen>]
 module Featurization =
 
     open System

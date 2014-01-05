@@ -1,5 +1,6 @@
 ﻿namespace Charon
 
+[<AutoOpen>]
 module Entropy =
 
     open System.Collections.Generic

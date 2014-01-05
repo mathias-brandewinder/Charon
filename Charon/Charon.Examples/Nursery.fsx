@@ -1,9 +1,6 @@
 ﻿#r @"..\Charon\bin\Debug\Charon.dll"
 
 open Charon
-open Charon.Tree
-open Charon.Featurization
-open Charon.Learning
 open System
 open System.IO
 open System.Diagnostics

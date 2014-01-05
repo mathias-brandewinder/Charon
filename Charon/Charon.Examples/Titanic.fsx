@@ -8,9 +8,6 @@ http://www.kaggle.com/c/titanic-gettingStarted
 #r @"..\packages\FSharp.Data.1.1.9\lib\net40\FSharp.Data.dll"
 
 open Charon
-open Charon.Tree
-open Charon.Featurization
-open Charon.Learning
 open System
 open FSharp.Data
 
@@ -44,7 +41,7 @@ let titanicDemo () =
 
     // We define the label, and what features should be used:
     let labels = "Survived", (fun (obs:Passenger) -> obs.Survived) |> Categorical
-
+    
     let features = 
         [ 
           "Sex", (fun (o:Passenger) -> o.Sex) |> Categorical;
