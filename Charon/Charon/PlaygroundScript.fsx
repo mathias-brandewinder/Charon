@@ -53,27 +53,6 @@ let features =
 let transformers = translators data (labels,features)
 let trainingset = prepare data transformers
 
-let tree = train trainingset [|0..6|] ([0..4] |> Set.ofList) { MinLeaf = 1; Holdout = 0.1 }
-
+let tree = train trainingset [|0..6|] ([0..4] |> Set.ofList) id { DefaultSettings with MinLeaf = 1; Holdout = 0.1 }
 
 let t = basicTree data (labels, features)
-
-let a = [| 0; 5; 7; 10; |]
-let b = [| 1; 3; 5; 7; 9 |]
-
-let intersect (x:int[]) (y:int[]) =
-    let (i,j) = (0,0)
-    let lx,ly = x.Length, y.Length
-    let rec search (a,b) =
-        if a < lx && b < ly
-        then 
-            if x.[a] = y.[b] then Some(x.[a],(a+1,b+1))
-            elif x.[a] < y.[b] then search (a+1,b)
-            else search (a,b+1)
-        else None
-    Seq.unfold (fun (a,b) -> search (a,b)) (0,0) 
-    |> Seq.toArray
-
-let c = [| 0 .. 2 .. 100000 |]
-let d = [| 0 .. 3 .. 100000 |]
-
