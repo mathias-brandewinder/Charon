@@ -16,6 +16,8 @@ module Learning =
     
     type Settings = { MinLeaf:int; Holdout:float; RandomSeed:int; ForestSize:int }
     
+    type FeaturesSelector = int Set -> int Set
+
     let discConv (x:Value) =
         match x with
         | Int(x) -> x
@@ -150,7 +152,7 @@ module Learning =
         if (Seq.isEmpty candidates) then None
         else candidates |> Seq.maxBy (fun (_,_,_,g) -> g) |> fun (i,f,s,_) -> (i,f,s) |> Some
 
-    let rec train (dataset:Dataset) (filter:filter) (remaining:int Set) (settings:Settings) =
+    let rec train (dataset:Dataset) (filter:filter) (remaining:int Set) (fsselector:FeaturesSelector) (settings:Settings) =
 
         let mostLikely () = dataset.Outcomes |> applyFilter filter |> mostLikely
         
@@ -159,7 +161,7 @@ module Learning =
         elif (Array.length filter <= settings.MinLeaf) then
             Leaf(mostLikely ())
         else
-            let candidates = remaining
+            let candidates = remaining |> fsselector
             let best = selectFeature dataset filter candidates
             
             match best with
@@ -172,7 +174,7 @@ module Learning =
                     Branch(Cat(branch, [| 
                                           for filt in indexes -> 
                                               if Array.length filt = 0 then Leaf(mostLikely ())
-                                              else train dataset filt remaining settings 
+                                              else train dataset filt remaining fsselector settings 
                                        |]))
                 | Cont(_) ->
                     let branch = { NumBranch.FeatIndex = i; Default = mostLikely (); Splits = s }
@@ -185,7 +187,7 @@ module Learning =
                                            for kv in filters ->
                                               let filt = kv.Value
                                               if Array.length filt = 0 then Leaf(mostLikely ())
-                                              else train dataset filt remaining settings 
+                                              else train dataset filt remaining fsselector settings 
                                        |]))
 
     type Results<'l,'a> = 
@@ -215,7 +217,7 @@ module Learning =
         let xs = Array.length dataset.Outcomes
         let trainingsample,validationsample = [| 0 .. (xs - 1) |] |> Array.partition (fun x -> rng.NextDouble() > settings.Holdout)
 
-        let tree = train dataset trainingsample ([0..(fs-1)] |> Set.ofList) settings
+        let tree = train dataset trainingsample ([0..(fs-1)] |> Set.ofList) id settings
 
         let converter = 
             let fs = featurizers |> List.unzip |> snd
@@ -252,7 +254,11 @@ module Learning =
         {   Classifier:'a -> string;
             Settings: Settings;
             OutOfBagQuality: float; }
-            
+
+    let pickN n (rng: Random) (from: int Set) =
+        let array = Set.toArray from 
+        seq { for i in 1 .. n -> array.[rng.Next(0, Array.length array)] } |> Set.ofSeq          
+          
     let forest<'l,'a> (data:('l*'a) seq) ((labels:string*Feature<'l>), (features:(string*Feature<'a>) list)) (settings:Settings) =
 
         let fs = List.length features
@@ -268,14 +274,15 @@ module Learning =
         let xs = Array.length dataset.Outcomes
         let samplesize = float xs * (1. - settings.Holdout) |> int
         let fsset = sqrt (float fs) |> ceil |> int
+        let fsselector = pickN fsset rng
+        let featuresSample = ([0..(fs-1)] |> Set.ofList)
 
         let trees = settings.ForestSize
 
         let models = 
             [| for t in 1 .. trees do
                 let trainingsample = [| for i in 0 .. samplesize -> rng.Next(xs) |] |> Array.sort
-                let featuresSample = [ for i in 0 .. fsset -> rng.Next(fs) ] |> Set.ofList
-                yield trainingsample, train dataset trainingsample featuresSample settings |]
+                yield trainingsample, train dataset trainingsample featuresSample fsselector settings |]
         
         let forest = models |> Array.map snd 
          
