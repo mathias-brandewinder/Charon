@@ -22,7 +22,7 @@ We force inference to treat every feature as optional,
 assuming that any feature could have missing values.
 *)
 
-type DataSet = CsvProvider<"""C:\Users\Mathias\Documents\GitHub\Charon\Charon\Charon.Examples\titanic.csv""", 
+type DataSet = CsvProvider<"titanic.csv", 
                            Schema="PassengerId=int, Pclass->Class, Parch->ParentsOrChildren, SibSp->SiblingsOrSpouse", 
                            SafeMode=true, 
                            PreferOptionals=true>
