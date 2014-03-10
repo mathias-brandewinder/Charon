@@ -9,9 +9,9 @@ type Obs =
         RawFloat: float;
         RawInt: int }
 
-type DataSet = CsvProvider<"""C:\Users\Mathias\Documents\GitHub\Charon\Charon\Charon.Examples\titanic.csv""", 
+type DataSet = CsvProvider<"""../Charon.Examples/titanic.csv""", 
                            Schema="PassengerId=int, Pclass->Class, Parch->ParentsOrChildren, SibSp->SiblingsOrSpouse", 
-                           SafeMode=true, 
+                           AssumeMissingValues=true, 
                            PreferOptionals=true>
 
 type Passenger = DataSet.Row
@@ -60,7 +60,7 @@ let titanicDemo () =
 
     let training = 
         use data = new DataSet()
-        [| for passenger in data.Data -> 
+        [| for passenger in data.Rows -> 
             passenger, // label source
             passenger |] // features source
                 
