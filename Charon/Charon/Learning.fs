@@ -191,7 +191,7 @@ module Learning =
                                               else train dataset filt remaining fsselector settings 
                                        |]))
 
-    type Results<'l,'a> = 
+    type Results<'a> = 
         {   Classifier:'a -> string;
             Tree: Tree;
             Settings: Settings;
@@ -251,7 +251,7 @@ module Learning =
           Pretty = view;
         }
 
-    type ForestResults<'l,'a> = 
+    type ForestResults<'a> = 
         {   Classifier:'a -> string;
             Settings: Settings;
             OutOfBagQuality: float; }
