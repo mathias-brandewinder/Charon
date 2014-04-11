@@ -9,7 +9,7 @@ type Obs =
         RawFloat: float;
         RawInt: int }
 
-type DataSet = CsvProvider<"""C:\Users\Mathias\Documents\GitHub\Charon\Charon\Charon.Examples\titanic.csv""", 
+type DataSet = CsvProvider<"""..\Charon.Examples\titanic.csv""", 
                            Schema="PassengerId=int, Pclass->Class, Parch->ParentsOrChildren, SibSp->SiblingsOrSpouse", 
                            SafeMode=true, 
                            PreferOptionals=true>
