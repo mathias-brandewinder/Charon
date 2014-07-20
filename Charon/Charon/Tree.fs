@@ -78,7 +78,7 @@ module Tree =
         let ls,fs = translator
         seq {
             match tree with
-            | Leaf(v)   -> yield sprintf "%s -> %s" (pad actives depth) (fst ls) //predictor v)
+            | Leaf(v)   -> yield sprintf "%s -> %s" (pad actives depth) (fst ls + " " + (snd ls).InsideOut.[v])
             | Branch(t) ->
                 match t with
                 | Cat(branch,next) ->
