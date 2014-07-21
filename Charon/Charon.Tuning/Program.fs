@@ -11,7 +11,7 @@ type Obs =
 
 type DataSet = CsvProvider<"""..\Charon.Examples\titanic.csv""", 
                            Schema="PassengerId=int, Pclass->Class, Parch->ParentsOrChildren, SibSp->SiblingsOrSpouse", 
-                           SafeMode=true, 
+                           AssumeMissingValues=true, 
                            PreferOptionals=true>
 
 type Passenger = DataSet.Row
@@ -59,8 +59,8 @@ let titanicDemo () =
         ]
 
     let training = 
-        use data = new DataSet()
-        [| for passenger in data.Data -> 
+        let data = DataSet.GetSample ()
+        [| for passenger in data.Rows -> 
             passenger, // label source
             passenger |] // features source
                 

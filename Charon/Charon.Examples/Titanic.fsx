@@ -5,7 +5,7 @@ http://www.kaggle.com/c/titanic-gettingStarted
 *)
 
 #r @"..\Charon\bin\Debug\Charon.dll"
-#r @"..\packages\FSharp.Data.1.1.9\lib\net40\FSharp.Data.dll"
+#r @"..\packages\FSharp.Data.2.0.9\lib\net40\FSharp.Data.dll"
 
 open Charon
 open System
@@ -24,7 +24,7 @@ assuming that any feature could have missing values.
 
 type DataSet = CsvProvider<"titanic.csv", 
                            Schema="PassengerId=int, Pclass->Class, Parch->ParentsOrChildren, SibSp->SiblingsOrSpouse", 
-                           SafeMode=true, 
+                           AssumeMissingValues=true, 
                            PreferOptionals=true>
 
 type Passenger = DataSet.Row
@@ -33,9 +33,11 @@ let titanicDemo () =
 
     // We read the training set into an array,
     // defining the Label we want to classify on:
+
+    let data = DataSet.GetSample ()
+
     let training = 
-        use data = new DataSet()
-        [| for passenger in data.Data -> 
+        [| for passenger in data.Rows -> 
             passenger, // label source
             passenger |] // features source
 
