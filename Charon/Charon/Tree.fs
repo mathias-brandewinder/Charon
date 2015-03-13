@@ -68,11 +68,15 @@ module Tree =
         | Num(branch,next) ->
             let f = branch.FeatIndex
             let splits = branch.Splits |> List.toArray
-            if (i=Array.length splits)
+            if (Array.length splits > 0)
             then
-                (fst fs.[f]), sprintf ">  %.3f" (splits.[i-1])
+                if (i=Array.length splits)
+                then
+                    (fst fs.[f]), sprintf ">  %.3f" (splits.[max 0 i-1])
+                else
+                    (fst fs.[f]), sprintf "<= %.3f" (splits.[i])
             else
-                (fst fs.[f]), sprintf "<= %.3f" (splits.[i])
+                (fst fs.[f]), "INVARIABLE"
 
     let rec display (tree:Tree) (actives:int Set) (depth:int) (translator:(string*FeatureMap)*((string*FeatureMap)[]))=
         let ls,fs = translator
