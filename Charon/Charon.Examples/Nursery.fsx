@@ -1,4 +1,4 @@
-﻿#r @"..\Charon\bin\Debug\Charon.dll"
+﻿#r @"../Charon/bin/Debug/Charon.dll"
 
 open Charon
 open System

@@ -1,0 +1,6 @@
+source https://www.nuget.org/api/v2
+
+nuget NuGet.CommandLine
+nuget FSharp.Data 2.0.9 framework: >= net45
+nuget FsUnit 1.2.1.0 framework: >= net45
+nuget NUnit 2.6.2 framework: >= net45

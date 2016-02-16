@@ -4,8 +4,9 @@ based on the Kaggle "Titanic: Machine Learning from Disaster" dataset:
 http://www.kaggle.com/c/titanic-gettingStarted
 *)
 
-#r @"..\Charon\bin\Debug\Charon.dll"
-#r @"..\packages\FSharp.Data.2.0.9\lib\net40\FSharp.Data.dll"
+#I @"../../packages/"
+#r @"FSharp.Data/lib/net40/FSharp.Data.dll"
+#r @"../Charon/bin/Debug/Charon.dll"
 
 open Charon
 open System
@@ -22,7 +23,10 @@ We force inference to treat every feature as optional,
 assuming that any feature could have missing values.
 *)
 
-type DataSet = CsvProvider<"titanic.csv", 
+[<Literal>]
+let filePath = "titanic.csv"
+
+type DataSet = CsvProvider<filePath, 
                            Schema="PassengerId=int, Pclass->Class, Parch->ParentsOrChildren, SibSp->SiblingsOrSpouse", 
                            AssumeMissingValues=true, 
                            PreferOptionals=true>
@@ -78,4 +82,5 @@ let titanicDemo () =
         training 
         |> Seq.averageBy (fun (l,x) -> 
             if (Option.get (l.Survived)).ToString() = (forestResults.Classifier x) then 1. else 0.)
+    
     printfn "Forest quality: %f" quality

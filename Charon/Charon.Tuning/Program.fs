@@ -2,14 +2,17 @@
 open Charon
 open FSharp.Data
 
-type Obs = 
-    { Int: int option; 
-        Float: float option; 
-        String: string option;
-        RawFloat: float;
-        RawInt: int }
+type Obs = { 
+    Int: int option
+    Float: float option
+    String: string option
+    RawFloat: float
+    RawInt: int }
 
-type DataSet = CsvProvider<"""..\Charon.Examples\titanic.csv""", 
+[<Literal>]
+let samplePath = """../Charon.Examples/titanic.csv"""
+
+type DataSet = CsvProvider<samplePath, 
                            Schema="PassengerId=int, Pclass->Class, Parch->ParentsOrChildren, SibSp->SiblingsOrSpouse", 
                            AssumeMissingValues=true, 
                            PreferOptionals=true>
